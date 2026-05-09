@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ride Report Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- MapLibre GL JS -->
+<script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
+<!-- html2canvas — used for screen-accurate export -->
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:            #080b10;
+  --grey:          #5a6070;
+  --font-head:     'Barlow Condensed', 'Arial Black', Arial, sans-serif;
+  --font-body:     'Barlow', Arial, sans-serif;
+  /* theme tokens — dark defaults */
+  --glass-bg:      rgba(8, 14, 24, 0.55);
+  --map-bg:        #0d1520;
+  --chart-bg:      #14171a;
+  --card-bg:       #080b10;
+  --card-border:   rgba(255,255,255,0.06);
+  --text-primary:  #ffffff;
+  --text-muted:    rgba(255,255,255,0.38);
+  --text-sub:      rgba(255,255,255,0.55);
+  --accent-orange:   #ff8c2b;
+  --accent-blue:     #4db8ff;
+  --accent-speed:    #4FC3F7;
+  --accent-power:    #7B2CBF;
+  --accent-hr:       #E53935;
+  --accent-cadence:  #E040FB;
+  --lr-slash:      rgba(255,255,255,0.4);
+  --divider:       rgba(255,255,255,0.08);
+  --legend-color:  rgba(255,255,255,0.45);
+  --version-color: rgba(255,255,255,0.18);
+}
+.light-theme {
+  --glass-bg:      rgba(240, 243, 250, 0.82);
+  --map-bg:        #e8eaf0;
+  --chart-bg:      #e5e7eb;
+  --card-bg:       #f0f2f5;
+  --card-border:   rgba(0,0,0,0.08);
+  --text-primary:  #2c3a52;
+  --text-muted:    rgba(0,0,0,0.42);
+  --text-sub:      rgba(20,28,48,0.60);
+  --accent-orange:   #e07010;
+  --accent-blue:     #1a6eb5;
+  --accent-speed:    #0288D1;
+  --accent-power:    #6A1B9A;
+  --accent-hr:       #C62828;
+  --accent-cadence:  #7B1FA2;
+  --lr-slash:      rgba(0,0,0,0.3);
+  --divider:       rgba(0,0,0,0.10);
+  --legend-color:  rgba(0,0,0,0.50);
+  --version-color: rgba(0,0,0,0.2);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+
+/* ── LANDING ── */
+#landing { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+#drop-zone {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 16px;
+  width: min(460px, 90vw); height: 240px;
+  border: 2px dashed var(--grey); border-radius: 16px; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+#drop-zone:hover, #drop-zone.drag-over {
+  border-color: var(--accent-blue); background: rgba(77,184,255,.05);
+}
+#drop-zone p      { color: var(--grey); font-size: 14px; font-family: var(--font-body); text-align: center; }
+#drop-zone strong { color: #ffffff; font-size: 17px; display: block; margin-bottom: 2px; }
+#file-input { display: none; }
+#status { color: var(--grey); font-family: var(--font-body); font-size: 13px; min-height: 18px; }
+#ftp-row {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px; margin-top: 6px;
+}
+#ftp-row label {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-body); font-size: 13px; color: var(--grey);
+}
+#ftp-input {
+  width: 72px; background: rgba(255,255,255,0.06);
+  color: var(--text-primary); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; padding: 5px 10px;
+  font-size: 14px; font-family: var(--font-head); font-weight: 700;
+  text-align: center; -moz-appearance: textfield;
+}
+#ftp-input::-webkit-inner-spin-button,
+#ftp-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+#ftp-input:focus { outline: none; border-color: var(--accent-blue); }
+#ftp-hint { font-size: 11px; color: rgba(90,96,112,0.7); font-family: var(--font-body); }
+#title-row { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: 8px; }
+#title-row label { font-family: var(--font-body); font-size: 13px; color: var(--grey); }
+#title-input {
+  width: min(460px, 90vw);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; padding: 8px 14px;
+  font-size: 14px; font-family: var(--font-head); font-weight: 600;
+}
+#title-input:focus { outline: none; border-color: var(--accent-blue); }
+#title-input::placeholder { color: rgba(90,96,112,0.6); font-weight: 400; }
+
+/* ── Strava section ── */
+#strava-section { width: min(460px, 90vw); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.strava-divider {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-body); font-size: 11px; color: rgba(90,96,112,0.6);
+}
+.strava-divider::before, .strava-divider::after {
+  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.07);
+}
+#strava-creds-area {
+  width: 100%; display: flex; flex-direction: column; gap: 7px;
+}
+#strava-creds-area input {
+  width: 100%; background: rgba(255,255,255,0.06);
+  color: var(--text-primary); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; padding: 7px 12px;
+  font-size: 13px; font-family: var(--font-body);
+}
+#strava-creds-area input:focus { outline: none; border-color: #FC4C02; }
+#strava-creds-toggle {
+  background: none; border: none; font-size: 11px; color: rgba(90,96,112,0.6);
+  cursor: pointer; font-family: var(--font-body); padding: 0; text-decoration: underline;
+}
+#strava-creds-toggle:hover { color: var(--grey); }
+/* Official Strava connect button — #FC5200 per brand guidelines */
+.btn-strava {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  width: 100%; padding: 11px 0;
+  background: #FC5200; color: #fff; border: none; border-radius: 4px;
+  font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700;
+  letter-spacing: 0.02em; cursor: pointer; transition: background .15s;
+}
+.btn-strava:hover { background: #e04800; }
+.btn-strava:disabled { background: rgba(252,82,0,0.35); cursor: default; }
+
+/* "Powered by Strava" badge */
+.powered-by-strava {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: rgba(90,96,112,0.7);
+  text-decoration: none;
+}
+.powered-by-strava svg { flex-shrink: 0; }
+.powered-by-strava span { color: #FC5200; font-weight: 700; letter-spacing: 0.03em; }
+#strava-rides-grid { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.strava-ride-card {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 11px; cursor: pointer;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  transition: background .15s, border-color .15s;
+  font-family: var(--font-body); text-align: left;
+}
+.strava-ride-card:hover { background: rgba(252,76,2,0.08); border-color: rgba(252,76,2,0.35); }
+.strava-ride-card.loading { opacity: 0.5; pointer-events: none; }
+.src-dot { width: 8px; height: 8px; border-radius: 50%; background: #FC4C02; flex-shrink: 0; }
+.src-info { flex: 1; min-width: 0; }
+.src-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.src-meta { font-size: 11px; color: var(--grey); margin-top: 2px; }
+.src-stats { display: flex; gap: 12px; flex-shrink: 0; }
+.src-stat { text-align: right; }
+.src-stat-val { font-size: 13px; font-weight: 700; color: #fff; font-family: var(--font-head); }
+.src-stat-lbl { font-size: 10px; color: var(--grey); }
+#strava-rides-status { font-size: 12px; color: var(--grey); font-family: var(--font-body); }
+.strava-footer { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.strava-footer-info { font-size: 11px; color: rgba(90,96,112,0.5); font-family: var(--font-body); }
+.strava-disconnect {
+  background: none; border: none; font-size: 11px; color: rgba(90,96,112,0.5);
+  cursor: pointer; font-family: var(--font-body); padding: 0; text-decoration: underline;
+}
+.strava-disconnect:hover { color: var(--grey); }
+#title-overlay.title-auto-size { width: max-content !important; height: auto !important; max-width: min(90%, 900px) !important; }
+#title-overlay.title-auto-size #title-text-wrap { flex: none; }
+#title-overlay.title-auto-size #ride-title { overflow: visible; text-overflow: clip; }
+
+/* ── BUTTONS ── */
+.btn-primary {
+  background: var(--accent-blue); color: #000; border: none;
+  padding: 10px 26px; font-size: 12px; font-weight: 700;
+  letter-spacing: 1.5px; border-radius: 8px; cursor: pointer;
+  text-transform: uppercase; font-family: var(--font-head);
+}
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-secondary {
+  background: transparent; color: var(--grey); border: 1px solid rgba(255,255,255,0.2);
+  padding: 9px 18px; font-size: 12px; font-weight: 600;
+  letter-spacing: 1px; border-radius: 8px; cursor: pointer;
+  text-transform: uppercase; font-family: var(--font-head);
+}
+.btn-secondary:hover { border-color: #ffffff; color: #ffffff; }
+
+/* ── REPORT WRAPPER ── */
+#report-wrapper {
+  display: none; flex-direction: column;
+  align-items: center; gap: 12px;
+  width: 100%; padding: 18px 14px;
+}
+#toolbar {
+  display: flex; gap: 10px; align-items: center;
+  flex-wrap: wrap; justify-content: center;
+}
+.toolbar-label {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  font-family: var(--font-body); font-size: 12px;
+  color: var(--grey); user-select: none;
+}
+
+/* ── REPORT CARD — full-bleed container ── */
+#report-card {
+  background: var(--card-bg);
+  width: min(1380px, 97vw);
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--card-border);
+}
+
+/* ── BACKGROUND LAYERS ── */
+#photo-bg {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center;
+  display: none;
+  z-index: 0;
+}
+#map-container {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+}
+#overlay-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ── VERSION TAG ── */
+#version-tag {
+  position: absolute; bottom: 8px; right: 12px;
+  font-size: 10px; font-family: var(--font-body);
+  color: var(--version-color); pointer-events: none; z-index: 20;
+}
+#strava-badge {
+  position: absolute; bottom: 8px; left: 12px;
+  display: none; align-items: center; gap: 4px;
+  font-size: 10px; font-family: Arial, Helvetica, sans-serif;
+  color: rgba(255,255,255,0.5); pointer-events: none; z-index: 20;
+}
+#strava-badge span { color: #FC5200; font-weight: 700; letter-spacing: 0.04em; }
+
+/* ── TITLE OVERLAY — top center ── */
+#title-overlay {
+  position: absolute;
+  top: 12px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10; pointer-events: none;
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-radius: 14px; padding: 10px 24px 10px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  max-width: min(90%, 750px);
+  display: flex; align-items: center; gap: 16px;
+}
+#title-icon-box {
+  background: rgba(0,0,0,0.25); border-radius: 10px;
+  padding: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+#title-icon { display: block; width: clamp(28px, 3.5vw, 52px); height: clamp(28px, 3.5vw, 52px); }
+#title-text-wrap { flex: 1; min-width: 0; text-align: left; }
+
+#ride-title {
+  font-family: var(--font-head); font-size: clamp(14px, 2vw, 30px);
+  font-weight: 700; color: var(--text-primary);
+  line-height: 1.1; letter-spacing: 0.06em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#ride-date {
+  font-family: var(--font-head); font-size: clamp(9px, 0.85vw, 13px);
+  font-weight: 600; color: var(--text-sub);
+  margin-top: 3px; letter-spacing: 0.12em; text-transform: uppercase;
+}
+
+/* ── STAT PANELS — left and right columns ── */
+#left-panel, #right-panel {
+  position: absolute; top: 12px;
+  width: clamp(140px, 22%, 300px);
+  gap: 7px; z-index: 10;
+}
+#left-panel  { left: 12px;  display: flex; flex-direction: column; }
+#right-panel { right: 12px; display: grid; grid-template-columns: 1fr 1fr; }
+.right-panel-full { grid-column: 1 / -1; }
+
+.stat-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-radius: 11px;
+  padding: 8px 14px 7px;
+  border: none;
+  display: grid;
+  flex-direction: column;
+  align-items: center;
+ 
+  text-align: left;
+}
+.panel-top-row   { display: flex; align-items: center; gap: 10px; }
+.panel-icon-wrap { display: flex; align-items: center; }
+.panel-icon      { display: block; width: clamp(16px, 2.2vw, 32px); height: clamp(16px, 2.2vw, 32px); }
+.panel-val       { margin: 0; }
+.panel-lbl       { margin-top: 3px; }
+.panel-col       { display: flex; flex-direction: column; }
+
+.panel-val {
+  font-family: var(--font-head); font-weight: 700;
+  font-size: clamp(20px, 2.9vw, 46px);
+  line-height: 1; color: var(--text-primary);
+}
+.accent-blue     { color: var(--accent-blue); }
+.accent-orange   { color: var(--accent-orange); }
+.accent-hr       { color: var(--accent-hr); }
+.accent-speed    { color: var(--accent-speed); }
+.accent-power    { color: var(--accent-power); }
+.accent-cadence  { color: var(--accent-cadence); }
+.panel-unit {
+  font-family: var(--font-head); font-weight: 700;
+  font-size: 0.42em; margin-left: 1px;
+  opacity: 0.85; vertical-align: baseline;
+}
+.panel-lbl {
+  font-family: var(--font-body); font-weight: 400;
+  font-size: clamp(7px, 0.58vw, 10px);
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-top: 3px;
+}
+
+/* ── L/R BALANCE PANEL ── */
+#lr-panel { padding: 8px 14px 10px; }
+.lr-bar-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 6px;
+}
+.lr-lbl-left  { font-family: var(--font-head); font-size: clamp(8px, 0.75vw, 12px); font-weight: 700; color: var(--accent-blue); }
+.lr-lbl-mid   { font-family: var(--font-body); font-size: clamp(6px, 0.52vw, 9px);  font-weight: 400; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.lr-lbl-right { font-family: var(--font-head); font-size: clamp(8px, 0.75vw, 12px); font-weight: 700; color: var(--accent-orange); }
+.lr-bar-track {
+  display: flex; width: 100%; height: 5px; border-radius: 3px; overflow: hidden;
+}
+.lr-bar-blue   { background: var(--accent-blue);   height: 100%; }
+.lr-bar-orange { background: var(--accent-orange); height: 100%; }
+
+/* ── CHART OVERLAY — floating panel, 12px from card edges ── */
+#chart-overlay {
+  position: absolute; bottom: 12px; left: 12px; right: 12px;
+  display: flex; flex-direction: column;
+  height: clamp(140px, 18vw, 265px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-radius: 14px;
+  border: 1px solid var(--divider);
+  z-index: 10;
+  overflow: hidden;
+}
+#chart-legend {
+  display: flex; align-items: center; gap: 20px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--divider);
+  flex-shrink: 0;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--font-body); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--legend-color);
+}
+.legend-line { width: 20px; height: 2px; border-radius: 1px; flex-shrink: 0; }
+#chart-wrap  { flex: 1; overflow: hidden; }
+#chart-canvas { display: block; width: 100%; height: 100%; }
+
+/* ── EXPORT OVERLAY ── */
+#export-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.8); z-index: 9999;
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+}
+#export-overlay.on { display: flex; }
+#export-overlay p { color: #ffffff; font-family: var(--font-body); font-size: 14px; }
+.spinner {
+  width: 38px; height: 38px;
+  border: 3px solid #222; border-top-color: var(--accent-blue);
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+#toolbar .btn-secondary:active {
+  background: var(--accent-blue);
+  color: #000;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── LIGHT THEME structural overrides ── */
+.light-theme #title-overlay { border: 1px solid rgba(0,0,0,0.10); }
+
+/* ── WEATHER PANEL — 5th slot in left-panel, hidden until fetch ── */
+#p-weather-wind { color: var(--accent-speed); }
+
+/* ── DROPDOWN TOOLBAR ── */
+.dropdown-group { position: relative; }
+.dropdown-btn { position: relative; }
+.dropdown-btn.active { border-color: var(--accent-blue); color: var(--accent-blue); }
+.dropdown-panel {
+  display: none; flex-direction: column; gap: 12px;
+  position: absolute; top: calc(100% + 10px); left: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--divider); border-radius: 12px;
+  padding: 14px 16px; z-index: 100; min-width: 210px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+.dropdown-panel.open { display: flex; }
+.panel-divider {
+  height: 1px; background: var(--divider); margin: 2px 0;
+}
+
+/* ── DESIGNER MODE ── */
+.designer-mode #title-overlay,
+.designer-mode #left-panel,
+.designer-mode #right-panel,
+.designer-mode #chart-overlay {
+  cursor: move;
+  box-shadow: 0 0 0 1.5px rgba(77,184,255,0.7), 0 0 0 5px rgba(77,184,255,0.12);
+  border-radius: 14px;
+  user-select: none;
+  pointer-events: auto;   /* overrides pointer-events:none on title-overlay */
+}
+.designer-hide-btn {
+  position: absolute; top: 5px; right: 5px;
+  width: 20px; height: 20px; padding: 0;
+  border: none; border-radius: 50%;
+  font-size: 14px; line-height: 20px; text-align: center;
+  cursor: pointer; z-index: 201; color: #fff;
+  font-family: Arial, sans-serif; font-weight: 700;
+}
+.designer-resize-handle {
+  position: absolute; bottom: 0; right: 0;
+  width: 18px; height: 18px;
+  cursor: se-resize; z-index: 201;
+  background: linear-gradient(135deg, transparent 40%, rgba(77,184,255,0.85) 40%);
+  border-bottom-right-radius: inherit;
+}
+.designer-opacity-ctrl {
+  position: absolute; bottom: 24px; left: 8px;
+  display: flex; align-items: center; gap: 6px;
+  z-index: 201; pointer-events: auto;
+  background: rgba(0,0,0,0.65); border-radius: 6px; padding: 3px 8px;
+}
+.designer-opacity-ctrl span {
+  color: rgba(255,255,255,0.7); font-size: 9px; font-family: var(--font-body);
+  text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap;
+}
+.designer-opacity-ctrl input[type=range] {
+  width: 70px; cursor: pointer; accent-color: var(--accent-blue);
+}
+
+/* ── MOBILE ── */
+@media (max-width: 600px) {
+  #report-card {
+    aspect-ratio: 4 / 3;
+    border-radius: 8px;
+  }
+  #left-panel, #right-panel {
+    width: clamp(100px, 18%, 180px);
+  }
+  #report-wrapper {
+    padding: 8px 6px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="landing">
+  <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
+         stroke="var(--accent-orange)" stroke-width="1.4" opacity=".7">
+      <path d="M12 2v12M12 2L8 6M12 2l4 4"/>
+      <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2"/>
+    </svg>
+    <p><strong>Drop your .fit or Strava JSON here</strong>or click to browse</p>
+    <button class="btn-primary"
+      onclick="event.stopPropagation();document.getElementById('file-input').click()">
+      Browse File
+    </button>
+  </div>
+  <div id="status"></div>
+  <div id="ftp-row">
+    <label>
+      FTP
+      <input type="number" id="ftp-input" min="50" max="600" value="200" placeholder="200">
+      <span style="color:var(--grey)">W</span>
+    </label>
+    <span id="ftp-hint">Power zones · saved locally</span>
+  </div>
+  <div id="title-row">
+    <label>Custom Title (optional)</label>
+    <input type="text" id="title-input" placeholder="Leave blank to use FIT filename">
+  </div>
+  <!-- Strava activity picker -->
+  <div id="strava-section">
+    <div class="strava-divider">or browse Strava activities</div>
+
+    <!-- Not connected -->
+    <div id="strava-connect-panel">
+      <button class="btn-strava" onclick="onStravaConnect()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+        Connect with Strava
+      </button>
+    </div>
+
+    <!-- Connected: recent rides -->
+    <div id="strava-connected-panel" style="display:none">
+      <div id="strava-rides-grid"></div>
+      <div id="strava-rides-status"></div>
+      <div class="strava-footer">
+        <a class="powered-by-strava" href="https://www.strava.com" target="_blank" rel="noopener">
+          Powered by
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="#FC5200"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+          <span>STRAVA</span>
+        </a>
+        <button class="strava-disconnect" onclick="onStravaDisconnect()">disconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom row: Powered by Strava left · version right -->
+  <div style="width:min(460px,90vw);display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+    <a class="powered-by-strava" href="https://www.strava.com" target="_blank" rel="noopener">
+      Powered by
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="#FC5200"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+      <span>STRAVA</span>
+    </a>
+    <span style="color:#333;font-family:var(--font-body);font-size:11px;">v6.27</span>
+  </div>
+
+  <input type="file" id="file-input" accept=".fit,.json">
+</div>
+
+<!-- REPORT -->
+<div id="report-wrapper">
+  <div id="toolbar">
+    <button class="btn-primary"   onclick="startExport(false)" style="display:none">&#11015; Export HD</button>
+    <button class="btn-secondary" onclick="startExport(true)">&#11015; Export Screen</button>
+    <button class="btn-secondary" onclick="resetUI()">&#8592; New File</button>
+    <button id="fetch-weather-btn" class="btn-secondary" onclick="fetchWeather()">&#9729; Weather</button>
+
+    <!-- Map settings -->
+    <div class="dropdown-group">
+      <button class="btn-secondary dropdown-btn" onclick="togglePanel('map-panel')">Map &#9662;</button>
+      <div id="map-panel" class="dropdown-panel">
+        <label class="toolbar-label">
+          <input type="checkbox" id="light-mode-cb" onchange="toggleLightMode()"
+                 style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent-blue);">
+          Light Theme
+        </label>
+        <label class="toolbar-label">
+          <input type="checkbox" id="photo-mode-cb" onchange="togglePhotoMode()"
+                 style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent-blue);">
+          My Photo
+        </label>
+        <label class="toolbar-label">
+          <input type="checkbox" id="photo-map-mode-cb" onchange="togglePhotoMapMode()"
+                 style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent-blue);">
+          With Photo
+        </label>
+        <button id="photo-chooser" class="btn-secondary" style="display:none"
+                onclick="document.getElementById('photo-file-input').click()">
+          Choose Photo
+        </button>
+        <input type="file" id="photo-file-input" accept="image/*" style="display:none">
+        
+        <div id="photo-opacity-row" style="display:none;flex-direction:column;gap:4px;margin-top:8px;">
+          <label class="toolbar-label" style="justify-content:space-between;">
+            Photo Opacity <span id="photo-opacity-val">50%</span>
+          </label>
+          <input type="range" id="photo-opacity-slider" min="0" max="1" step="0.05" value="0.5"
+                 oninput="onPhotoOpacityChange()"
+                 style="width:100%;cursor:pointer;accent-color:var(--accent-blue);">
+          <label class="toolbar-label" style="margin-top:4px;">
+            <input type="checkbox" id="photo-bw-cb" onchange="onPhotoBWChange()"
+                   style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent-blue);">
+            B&amp;W
+          </label>
+        </div>
+
+        <div id="map-opacity-row" style="display:none;flex-direction:column;gap:4px;margin-top:8px;">
+          <label class="toolbar-label" style="justify-content:space-between;">
+            Map Opacity <span id="map-opacity-val">85%</span>
+          </label>
+          <input type="range" id="map-opacity-slider" min="0" max="1" step="0.05" value="0.85"
+                 oninput="onMapOpacityChange()"
+                 style="width:100%;cursor:pointer;accent-color:var(--accent-blue);">
+        </div>
+
+        <div id="blend-mode-row" style="display:none;flex-direction:column;gap:4px;margin-top:8px;">
+          <label class="toolbar-label">Blend Mode</label>
+          <select id="blend-mode-select" onchange="onBlendModeChange()"
+                  style="width:100%;background:transparent;color:var(--grey);
+                         border:1px solid var(--divider);border-radius:8px;padding:5px 8px;
+                         font-size:11px;cursor:pointer;font-family:var(--font-head);
+                         letter-spacing:1px;text-transform:uppercase;">
+            <option value="normal">Normal</option>
+            <option value="screen">Screen</option>
+            <option value="multiply">Multiply</option>
+            <option value="overlay">Overlay</option>
+            <option value="hard-light">Hard Light</option>
+            <option value="soft-light">Soft Light</option>
+          </select>
+        </div>
+
+        <div id="map-layers-row" style="display:none;flex-direction:column;gap:6px;margin-top:8px;">
+          <div class="panel-divider"></div>
+          <span class="toolbar-label" style="font-weight:700;font-size:10px;margin-bottom:2px;">MAP LAYERS</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            <label class="toolbar-label" style="font-size:11px;">
+              <input type="checkbox" id="layer-roads-cb" checked onchange="onLayerToggle('roads')" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent-blue);">
+              Roads
+            </label>
+            <label class="toolbar-label" style="font-size:11px;">
+              <input type="checkbox" id="layer-labels-cb" checked onchange="onLayerToggle('labels')" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent-blue);">
+              Labels
+            </label>
+            <label class="toolbar-label" style="font-size:11px;">
+              <input type="checkbox" id="layer-parks-cb" checked onchange="onLayerToggle('parks')" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent-blue);">
+              Parks
+            </label>
+            <label class="toolbar-label" style="font-size:11px;">
+              <input type="checkbox" id="layer-water-cb" checked onchange="onLayerToggle('water')" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent-blue);">
+              Water
+            </label>
+            <label class="toolbar-label" style="font-size:11px;">
+              <input type="checkbox" id="layer-land-cb" checked onchange="onLayerToggle('land')" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent-blue);">
+              Land
+            </label>
+            <label class="toolbar-label" style="font-size:11px;">
+              <input type="checkbox" id="layer-buildings-cb" checked onchange="onLayerToggle('buildings')" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent-blue);">
+              Buildings
+            </label>
+          </div>
+        </div>
+
+        <div class="panel-divider"></div>
+        <label class="toolbar-label" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          Map Style
+          <select id="map-theme-select" onchange="onMapThemeChange()"
+            style="width:100%;background:transparent;color:var(--grey);
+                   border:1px solid var(--divider);border-radius:8px;padding:5px 8px;
+                   font-size:11px;cursor:pointer;font-family:var(--font-head);
+                   letter-spacing:1px;text-transform:uppercase;">
+            <option value="default">Carto Default</option>
+            <option value="maritime">Maritime</option>
+            <option value="navy">Navy</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <!-- Chart settings -->
+    <div class="dropdown-group">
+      <button class="btn-secondary dropdown-btn" onclick="togglePanel('chart-panel')">Chart &#9662;</button>
+      <div id="chart-panel" class="dropdown-panel">
+        <label class="toolbar-label">
+          <input type="checkbox" id="recalc-stats-cb" checked onchange="toggleRecalc()"
+                 style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent-blue);">
+          Re-calc Stats
+        </label>
+        <div class="panel-divider"></div>
+        <label class="toolbar-label" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          Power Smoothing
+          <select id="power-smooth-select" onchange="onPowerSmoothingChange()"
+            style="width:100%;background:transparent;color:var(--grey);
+                   border:1px solid var(--divider);border-radius:8px;padding:5px 8px;
+                   font-size:11px;cursor:pointer;font-family:var(--font-head);
+                   letter-spacing:1px;text-transform:uppercase;">
+            <option value="1"  selected>1s — Raw</option>
+            <option value="3"         >3s</option>
+            <option value="10"        >10s</option>
+            <option value="30"        >30s</option>
+          </select>
+        </label>
+        <div class="panel-divider"></div>
+        <label class="toolbar-label" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          Chart Mode
+          <select id="chart-mode-select" onchange="onChartModeChange()"
+            style="width:100%;background:transparent;color:var(--grey);
+                   border:1px solid var(--divider);border-radius:8px;padding:5px 8px;
+                   font-size:11px;cursor:pointer;font-family:var(--font-head);
+                   letter-spacing:1px;text-transform:uppercase;">
+            <option value="classic" selected>Classic Power</option>
+            <option value="power-elevation">Power Elevation</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <!-- Designer settings -->
+    <div class="dropdown-group">
+      <button class="btn-secondary dropdown-btn" onclick="togglePanel('designer-panel')">Designer &#9662;</button>
+      <div id="designer-panel" class="dropdown-panel">
+        <label class="toolbar-label">
+          <input type="checkbox" id="designer-mode-cb" onchange="toggleDesignerMode()"
+                 style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent-blue);">
+          Designer Mode
+        </label>
+        <label class="toolbar-label">
+          <input type="checkbox" id="title-auto-size-cb" onchange="onTitleAutoSizeChange()"
+                 style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent-blue);">
+          Auto-size Title
+        </label>
+        <div class="panel-divider"></div>
+        <button class="btn-secondary" onclick="saveLayout()" style="width:100%;">Save Layout</button>
+        <button class="btn-secondary" onclick="document.getElementById('layout-file-input').click()" style="width:100%;">Load Layout</button>
+        <input type="file" id="layout-file-input" accept=".json" style="display:none">
+        <div id="camera-controls" style="display:none;flex-direction:column;gap:10px;">
+          <div class="panel-divider"></div>
+          <label class="toolbar-label" style="flex-direction:column;align-items:flex-start;gap:4px;">
+            Pitch
+            <div style="display:flex;align-items:center;gap:8px;width:100%;">
+              <input type="range" id="pitch-slider" min="0" max="60" step="1" value="0"
+                     oninput="onCameraChange()"
+                     style="flex:1;cursor:pointer;accent-color:var(--accent-blue);">
+              <span id="pitch-val" style="font-size:11px;color:var(--grey);width:28px;text-align:right;">0°</span>
+            </div>
+          </label>
+          <label class="toolbar-label" style="flex-direction:column;align-items:flex-start;gap:4px;">
+            Bearing
+            <div style="display:flex;align-items:center;gap:8px;width:100%;">
+              <input type="range" id="bearing-slider" min="-180" max="180" step="1" value="0"
+                     oninput="onCameraChange()"
+                     style="flex:1;cursor:pointer;accent-color:var(--accent-blue);">
+              <span id="bearing-val" style="font-size:11px;color:var(--grey);width:28px;text-align:right;">0°</span>
+            </div>
+          </label>
+        </div>
+        <div id="weather-unit-controls" style="display:none;flex-direction:column;gap:10px;">
+          <div class="panel-divider"></div>
+          <label class="toolbar-label" style="flex-direction:column;align-items:flex-start;gap:4px;">
+            Temperature
+            <select id="temp-unit-select" onchange="onWeatherUnitChange()"
+              style="width:100%;background:transparent;color:var(--grey);border:1px solid var(--divider);
+                     border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;
+                     font-family:var(--font-head);letter-spacing:1px;text-transform:uppercase;">
+              <option value="C">°C — Celsius</option>
+              <option value="F">°F — Fahrenheit</option>
+            </select>
+          </label>
+          <label class="toolbar-label" style="flex-direction:column;align-items:flex-start;gap:4px;">
+            Wind Speed
+            <select id="wind-unit-select" onchange="onWeatherUnitChange()"
+              style="width:100%;background:transparent;color:var(--grey);border:1px solid var(--divider);
+                     border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;
+                     font-family:var(--font-head);letter-spacing:1px;text-transform:uppercase;">
+              <option value="kmh">km/h</option>
+              <option value="mph">mph</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="report-card">
+    <div id="version-tag">v6.27</div>
+    <div id="strava-badge">
+      Powered by
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="#FC5200"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+      <span>STRAVA</span>
+    </div>
+    <div id="photo-bg"></div>
+    <div id="map-container"></div>
+    <canvas id="overlay-canvas"></canvas>
+
+    <!-- Title — top center -->
+    <div id="title-overlay">
+      <div id="title-icon-box"><canvas id="icon-bike"></canvas></div>
+      <div id="title-text-wrap">
+        <div id="ride-title">—</div>
+        <div id="ride-date">—</div>
+      </div>
+    </div>
+
+    <!-- Left stat column -->
+    <div id="left-panel">
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-dist" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-dist">—</div>
+        </div>
+        <div class="panel-lbl">Distance</div>
+      </div>
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-time" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-time">—</div>
+        </div>
+        <div class="panel-lbl">Moving Time</div>
+      </div>
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-speed" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-speed">—</div>
+        </div>
+        <div class="panel-lbl">Avg Speed</div>
+      </div>
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-elev" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-elev">—</div>
+        </div>
+        <div class="panel-lbl">Elev Gain</div>
+      </div>
+      <!-- Weather — 5th slot, hidden until fetch -->
+      <div id="weather-panel" class="stat-panel" style="display:none">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="weather-icon" class="panel-icon"></canvas></div>
+          <div class="panel-col">
+            <div class="panel-val" id="p-weather-temp">—</div>
+            <div class="panel-lbl" id="p-weather-wind">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right stat column -->
+    <div id="right-panel">
+      <!-- Row 1: HR pair -->
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-hr" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-hr">—</div>
+        </div>
+        <div class="panel-lbl">Avg HR</div>
+      </div>
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-max-hr" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-max-hr">—</div>
+        </div>
+        <div class="panel-lbl">Max HR</div>
+      </div>
+      <!-- Row 2: Cadence pair -->
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-cad" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-cad">—</div>
+        </div>
+        <div class="panel-lbl">Avg Cadence</div>
+      </div>
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-max-cad" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-max-cad">—</div>
+        </div>
+        <div class="panel-lbl">Max Cadence</div>
+      </div>
+      <!-- Row 3: Power pair -->
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-pwr" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-pwr">—</div>
+        </div>
+        <div class="panel-lbl">Avg Power</div>
+      </div>
+      <div class="stat-panel">
+        <div class="panel-top-row">
+          <div class="panel-icon-wrap"><canvas id="icon-np" class="panel-icon"></canvas></div>
+          <div class="panel-val" id="p-np">—</div>
+        </div>
+        <div class="panel-lbl">NP</div>
+      </div>
+      <!-- Row 4: L/R Balance full-width -->
+      <div class="stat-panel right-panel-full" id="lr-panel" style="display:none">
+        <div class="lr-bar-row">
+          <span class="lr-lbl-left"  id="p-lr-left">L —%</span>
+          <span class="lr-lbl-mid">L/R BAL</span>
+          <span class="lr-lbl-right" id="p-lr-right">—% R</span>
+        </div>
+        <div class="lr-bar-track">
+          <div class="lr-bar-blue"   id="lr-bar-blue"   style="width:50%"></div>
+          <div class="lr-bar-orange" id="lr-bar-orange" style="width:50%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart overlay — docked bottom -->
+    <div id="chart-overlay">
+      <div id="chart-legend">
+        <div class="legend-item">
+          <div class="legend-line" style="background:#ee3e36;"></div>Heart Rate
+        </div>
+        <div class="legend-item">
+          <div class="legend-line" style="background:rgba(140,140,140,0.7);"></div>Elevation
+        </div>
+        <div class="legend-item">
+          <div class="legend-line" style="background:linear-gradient(90deg,#3399ff,#f6eb14,#ed1c24);"></div>Power Zones
+        </div>
+      </div>
+      <div id="chart-wrap"><canvas id="chart-canvas"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Export spinner -->
+<div id="export-overlay">
+  <div class="spinner"></div>
+  <p>Rendering PNG — this may take a few seconds…</p>
+</div>
+
+<script>const Config={VERSION:"v6.27",MAP_STYLES:{dark:"https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",light:"https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"},COLORS:{WHITE:"#ffffff",ELEV:"#888888",HR:"#ee3e36"},THEMES:{dark:{glassBg:"rgba(8,14,24,0.55)",chartBg:"#14171a",mapBg:"#0d1520",textPrimary:"#ffffff",textMuted:"rgba(255,255,255,0.38)",textSub:"rgba(255,255,255,0.55)",accentOrange:"#ff8c2b",accentBlue:"#4db8ff",accentSpeed:"#4FC3F7",accentPower:"#7B2CBF",accentHr:"#E53935",accentCadence:"#E040FB",lrSlash:"rgba(255,255,255,0.4)"},light:{glassBg:"rgba(240, 243, 250, 0.82)",chartBg:"#e5e7eb",mapBg:"#e8eaf0",textPrimary:"#2c3a52",textMuted:"rgba(0,0,0,0.42)",textSub:"rgba(20,28,48,0.60)",accentOrange:"#e07010",accentBlue:"#1a6eb5",accentSpeed:"#0288D1",accentPower:"#6A1B9A",accentHr:"#C62828",accentCadence:"#7B1FA2",lrSlash:"rgba(0,0,0,0.3)"}},LAYOUT:{EXPORT_W:2560,EXPORT_H:1440,CHART_OVERLAY_RATIO:.22,PANEL_W_RATIO:.22,ROUTE_PAD_LON:.005,ROUTE_PAD_LAT:.003,ROUTE_TRIM_M:300},DATE:{DAY:["SUN","MON","TUE","WED","THU","FRI","SAT"],MON:["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]},ZONES:{Z1:"#999999",Z2:"#3399ff",Z3:"#33cc33",Z4:"#f6eb14",Z5:"#f37021","Z6+":"#ed1c24"},WMO:{0:["clear","Clear"],1:["mostly-clear","Mostly Clear"],2:["partly-cloudy","Partly Cloudy"],3:["overcast","Overcast"],45:["fog","Fog"],48:["fog","Freezing Fog"],51:["drizzle","Drizzle"],53:["drizzle","Drizzle"],55:["drizzle","Heavy Drizzle"],61:["rain","Rain"],63:["rain","Rain"],65:["heavy-rain","Heavy Rain"],71:["snow","Snow"],73:["snow","Snow"],75:["heavy-snow","Heavy Snow"],77:["snow","Snow Grains"],80:["rain","Showers"],81:["rain","Showers"],82:["heavy-rain","Heavy Showers"],85:["snow","Snow Showers"],86:["heavy-snow","Heavy Snow Showers"],95:["thunderstorm","Thunderstorm"],96:["thunderstorm","Thunderstorm"],99:["thunderstorm","Thunderstorm"]}};window.Config=Config;const State={customTitle:"",titleAutoSize:!1,isLightMode:!1,isPhotoMode:!1,isPhotoMapMode:!1,photoOpacity:.5,photoGrayscale:!1,mapOpacity:.85,mapLayerVisibility:{roads:!0,labels:!0,parks:!0,water:!0,land:!0,buildings:!0},mapBlendMode:"normal",photo:null,rows:null,stats:null,summaryStats:null,useRecalc:!0,map:null,bounds:null,trim:null,mapTheme:"default",dataSource:null,isDesignerMode:!1,layout:null,powerSmoothing:1,chartMode:"classic",ftp:200,weather:null,weatherUnits:{temp:"C",wind:"kmh"},get theme(){return Config.THEMES[this.isLightMode?"light":"dark"]}};window.State=State;const Utils={zoneColor:t=>{const e=State.ftp||200;return t<=.55*e?Config.ZONES.Z1:t<=.75*e?Config.ZONES.Z2:t<=.9*e?Config.ZONES.Z3:t<=1.05*e?Config.ZONES.Z4:t<=1.2*e?Config.ZONES.Z5:Config.ZONES["Z6+"]},degToCardinal:t=>["N","NE","E","SE","S","SW","W","NW"][Math.round((t%360+360)%360/45)%8]};window.Utils=Utils;const FitParser={FIT_EPOCH:6310656e5,s32:t=>null!=t&&t>2147483647?t-4294967296:t,async parse(t){const e=new DataView(t),a=new Uint8Array(t),o=t.byteLength;if(o<12)throw new Error("File too small");if(".FIT"!==String.fromCharCode(a[8],a[9],a[10],a[11]))throw new Error("Not a valid FIT file");const n=[],l={},r=[],i=t=>t<o?a[t]:null,s=(t,a)=>t+1<o?a?e.getUint16(t,!0):e.getUint16(t,!1):null,c=(t,a)=>t+3<o?a?e.getUint32(t,!0):e.getUint32(t,!1):null,d=(t,e)=>{const n={};let l=t;for(const t of e.fields){if(l+t.fSize>o||"string"==typeof t.fNum){l+=t.fSize;continue}let r=null;switch(t.fSize){case 1:r=a[l];break;case 2:r=s(l,e.le);break;case 4:r=c(l,e.le);break;case 8:r=(c(l,e.le)??0)+4294967296*(c(l+4,e.le)??0)}n[t.fNum]=r,l+=t.fSize}return n};let h=a[0];const m=o-2;for(;h<m&&h<o;){const t=a[h];if(128==(192&t)){h++;const e=l[t>>5&3];if(e){const t=d(h,e);20===e.globalNum?n.push(t):18!==e.globalNum&&19!==e.globalNum||r.push({gn:e.globalNum,data:t}),h+=e.recordSize}continue}const e=!!(32&t),c=15&t;if(h++,64&t){h++;const t=i(h);if(h++,null===t)break;const n=0===t,r=s(h,n);if(h+=2,null===r)break;const d=i(h);if(h++,null===d)break;const m=[];let p=0;for(let t=0;t<d&&!(h+2>=o);t++){const t=a[h++],e=a[h++];h++,m.push({fNum:t,fSize:e}),p+=e}if(e){const t=i(h);if(h++,t)for(let e=0;e<t&&!(h+2>=o);e++)h++,p+=a[h++],h++}l[c]={globalNum:r,le:n,fields:m,recordSize:p}}else{const t=l[c];if(!t||h+t.recordSize>o)break;const e=d(h,t);20===t.globalNum?n.push(e):18!==t.globalNum&&19!==t.globalNum||r.push({gn:t.globalNum,data:e}),h+=t.recordSize}}return{rowData:n.map(t=>{const e=t[0]??null,a=t[1]??null,o=t[78]??t[2]??null,n=t[3]??null,l=t[136]??t[6]??null,r=t[7]??null,i=t[5]??null,s=t[253]??null,c=t[4]??null,d=t[30]??null,h=null!=e?this.s32(e)*(180/2**31):null,m=null!=a?this.s32(a)*(180/2**31):null;let p=null;null!=o&&65535!==o&&4294967295!==o&&(p=o/5-500);let u=null;if(null!=l&&65535!==l&&4294967295!==l){const t=l/1e3;u=t<200?t:null}const g=null!=r&&65535!==r?r:null,y=null!=n&&255!==n?n:null,S=null!=i&&4294967295!==i?i/100:null,f=null!=s?new Date(this.FIT_EPOCH+1e3*s):null;let v=null;if(null!=d&&255!==d&&65535!==d){const t=127&d;t<=100&&(v=128&d?{right:t,left:100-t}:{left:t,right:100-t})}return{lat:null!=h&&Math.abs(h)>.001&&h<=90&&h>=-90?h:null,lon:null!=m&&Math.abs(m)>.001&&m<=180&&m>=-180?m:null,alt:p,hr:y,speed:u,power:g,distance:S,ts:f,lrBalance:v,cadence:null!=c&&255!==c?c:null}}),summaryMsgs:r}}};window.FitParser=FitParser;const StravaParser={_DAY:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],_MON:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],parse(t){const{summary:e,streams:a}=t;if(!a||!a.time)throw new Error("Invalid Strava JSON — missing streams.time");return{rowData:this._buildRows(e,a),summaryStats:this._buildSummary(e,a)}},_buildRows(t,e){const a=new Date(t.start_date).getTime(),o=e.time?.data||[],n=e.latlng?.data||[],l=e.altitude?.data||[],r=e.heartrate?.data||[],i=e.cadence?.data||[],s=e.watts?.data||[],c=e.distance?.data||[],d=e.velocity_smooth?.data||[];return o.map((t,e)=>{const o=n[e],h=o?.[0]??null,m=o?.[1]??null,p=null!=h&&Math.abs(h)>.001&&h<=90&&h>=-90,u=null!=m&&Math.abs(m)>.001&&m<=180&&m>=-180,g=d[e]??null,y=s[e]??null,S=r[e]??null,f=i[e]??null,v=c[e]??null,w=l[e]??null;return{lat:p?h:null,lon:u?m:null,alt:null!=w?w:null,hr:null!=S&&S>0&&S<250?S:null,speed:null!=g&&g>=0&&g<200?g:null,power:null!=y&&y>=0&&y<2500?y:null,distance:null!=v?v:null,ts:new Date(a+1e3*t),lrBalance:null,cadence:null!=f&&f>0&&f<255?f:null}})},_buildSummary(t,e){const a=t.moving_time||0,o=Math.floor(a/3600),n=Math.floor(a%3600/60),l=new Date(t.start_date_local),r=[this._DAY[l.getUTCDay()],String(l.getUTCDate()).padStart(2,"0"),this._MON[l.getUTCMonth()],l.getUTCFullYear()].join(" "),i=e.cadence?.data?.filter(t=>t>0)||[],s=i.length?Math.max(...i):0;return{title:t.name,dateStr:r,distKm:Math.round(t.distance/100)/10,avgKmh:Math.round(3.6*(t.average_speed||0)*10)/10,avgPwr:Math.round(t.average_watts||0),avgHR:Math.round(t.average_heartrate||0),totalGain:Math.round(t.total_elevation_gain||0),durStr:`${o}:${String(n).padStart(2,"0")}`,np:Math.round(t.weighted_average_watts||0),maxPwr:Math.round(t.max_watts||0),maxHR:Math.round(t.max_heartrate||0),avgCad:Math.round(t.average_cadence||0),maxCad:s,lr:null}}};window.StravaParser=StravaParser;const StravaService={get clientId(){return localStorage.getItem("strava_client_id")||""},get clientSec(){return localStorage.getItem("strava_client_secret")||""},get accessToken(){return localStorage.getItem("strava_access_token")||""},get refreshTok(){return localStorage.getItem("strava_refresh_token")||""},get expiresAt(){return Number(localStorage.getItem("strava_expires_at")||0)},isConnected(){return!!this.accessToken},hasCredentials(){return!(!this.clientId||!this.clientSec)},saveCredentials(t,e){localStorage.setItem("strava_client_id",t.trim()),localStorage.setItem("strava_client_secret",e.trim())},_store({access_token:t,refresh_token:e,expires_at:a}){localStorage.setItem("strava_access_token",t),localStorage.setItem("strava_refresh_token",e),localStorage.setItem("strava_expires_at",String(a))},disconnect(){["strava_access_token","strava_refresh_token","strava_expires_at"].forEach(t=>localStorage.removeItem(t))},AUTH_START_URL:"https://sjxnbmknrxtutxygraja.supabase.co/functions/v1/strava-auth/start",authorize(){const t=location.href.split("#")[0];location.href=this.AUTH_START_URL+"?return_url="+encodeURIComponent(t)},readFragmentTokens(){const t=location.hash.slice(1);if(!t.includes("strava_access_token"))return!1;const e=new URLSearchParams(t),a=e.get("strava_access_token"),o=e.get("strava_refresh_token"),n=e.get("strava_expires_at"),l=e.get("strava_athlete");return!!a&&(localStorage.setItem("strava_access_token",a),localStorage.setItem("strava_refresh_token",o||""),localStorage.setItem("strava_expires_at",n||"0"),l&&localStorage.setItem("strava_athlete_name",decodeURIComponent(l)),history.replaceState(null,"",location.pathname+location.search),!0)},async exchangeCode(t){const e=await fetch("https://www.strava.com/oauth/token",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_id:this.clientId,client_secret:this.clientSec,code:t,grant_type:"authorization_code"})});if(!e.ok)throw new Error(`Token exchange ${e.status}: ${await e.text()}`);this._store(await e.json())},async _ensureToken(){if(Math.floor(Date.now()/1e3)<this.expiresAt-300)return;const t=await fetch("https://www.strava.com/oauth/token",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_id:this.clientId,client_secret:this.clientSec,refresh_token:this.refreshTok,grant_type:"refresh_token"})});if(!t.ok)throw new Error(`Token refresh ${t.status}`);this._store(await t.json())},RIDE_TYPES:new Set(["Ride","VirtualRide","MountainBikeRide","GravelRide","EBikeRide","EBikeMountainBikeRide"]),async fetchRecentRides(t=3){await this._ensureToken();const e=await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=15",{headers:{Authorization:`Bearer ${this.accessToken}`}});if(!e.ok)throw new Error(`Activities ${e.status}`);return(await e.json()).filter(t=>this.RIDE_TYPES.has(t.type)).slice(0,t)},async fetchStreams(t){await this._ensureToken();const e=await fetch(`https://www.strava.com/api/v3/activities/${t}/streams?keys=time,latlng,altitude,heartrate,cadence,watts,distance,velocity_smooth&key_by_type=true`,{headers:{Authorization:`Bearer ${this.accessToken}`}});if(!e.ok)throw new Error(`Streams ${e.status}`);return e.json()}};window.StravaService=StravaService;const Analytics={calculate(t,e){const a=t.length,o=t.filter(t=>null!=t.distance),n=o.length?Math.max(...o.map(t=>t.distance)):0,l=Math.round(n/100)/10,r=t.filter(t=>null!=t.speed&&t.speed>.1).map(t=>t.speed);let i=0;if(r.length>10&&(i=Math.round(r.reduce((t,e)=>t+e,0)/r.length*36)/10),0===i||i>120){const t=a/3600;n>0&&t>0&&(i=Math.round(n/1e3/t*10)/10)}const s=t.filter(t=>null!=t.power&&t.power<2500).map(t=>t.power),c=s.length?Math.round(s.reduce((t,e)=>t+e,0)/s.length):0,d=t.filter(t=>null!=t.hr&&t.hr>0).map(t=>t.hr),h=d.length?Math.round(d.reduce((t,e)=>t+e,0)/d.length):0,m=t.filter(t=>null!=t.cadence&&t.cadence>0).map(t=>t.cadence),p=m.length?Math.round(m.reduce((t,e)=>t+e,0)/m.length):0,u=d.length?d.reduce((t,e)=>e>t?e:t,0):0,g=m.length?m.reduce((t,e)=>e>t?e:t,0):0,y=t.map(t=>t.alt).filter(t=>null!=t);let S=0;if(y.length>5){const t=[];for(let e=0;e<y.length;e++){const a=Math.max(0,e-2),o=Math.max(0,e-1),n=Math.min(y.length-1,e+1),l=Math.min(y.length-1,e+2);t.push((1*y[a]+2*y[o]+3*y[e]+2*y[n]+1*y[l])/9)}let e=t[0];for(let a=1;a<t.length;a++){const o=t[a]-e;o>=.799?(S+=o,e=t[a]):t[a]<e&&(e=t[a])}}const f=Math.floor(a/3600),v=Math.floor(a%3600/60),w=t.find(t=>null!=t.ts)?.ts,M=w?`${Config.DATE.DAY[w.getDay()]} ${String(w.getDate()).padStart(2,"0")} ${Config.DATE.MON[w.getMonth()]} ${w.getFullYear()}`:"ACTIVITY";let b=0;if(s.length>30){const e=t.map(t=>t.power??0),a=30,o=[];for(let t=a-1;t<e.length;t++){let n=0;for(let o=t-a+1;o<=t;o++)n+=e[o];o.push(n/a)}const n=o.map(t=>Math.pow(t,4)).reduce((t,e)=>t+e,0)/o.length;b=Math.round(Math.pow(n,.25))}const I=s.length?Math.round(Math.max(...s)):0,E=t.filter(t=>null!=t.lrBalance).map(t=>t.lrBalance);let x=null;if(E.length>10){const t=Math.round(E.reduce((t,e)=>t+e.left,0)/E.length);x={left:t,right:100-t}}return{title:e.replace(/\.fit$/i,"").replace(/_/g," "),dateStr:M,distKm:l,avgKmh:i,avgPwr:c,avgHR:h,totalGain:Math.round(S),durStr:`${f}:${String(v).padStart(2,"0")}`,np:b,maxPwr:I,lr:x,avgCad:p,maxHR:u,maxCad:g}},parseSummary(t,e,a){const o=t.find(t=>18===t.gn)?.data;if(!o)return null;const n=o,l=n[9]??0,r=n[8]??0,i=n[124]??0,s=n[22]??0,c=n[16]??0,d=n[17]??0,h=n[18]??0,m=n[19]??0,p=n[20]??0,u=n[21]??0,g=n[34]??0,y=n[37]??null,S=Math.round(l/1e4)/10,f=i?Math.round(i/1e3*3.6*10)/10:0,v=Math.round(r/1e3),w=Math.floor(v/3600),M=Math.floor(v%3600/60);let b=null;if(null!=y&&65535!==y){const t=Math.round((y-32768)/100);b={left:100-t,right:t}}const I=a.find(t=>null!=t.ts)?.ts,E=I?`${Config.DATE.DAY[I.getDay()]} ${String(I.getDate()).padStart(2,"0")} ${Config.DATE.MON[I.getMonth()]} ${I.getFullYear()}`:"ACTIVITY";return{title:e.replace(/\.fit$/i,"").replace(/_/g," "),dateStr:E,distKm:S,avgKmh:f,avgPwr:p,avgHR:c,totalGain:s,durStr:`${w}:${String(M).padStart(2,"0")}`,np:g,maxPwr:u,lr:b,avgCad:h,maxHR:d,maxCad:m}}};window.Analytics=Analytics;const Painters={drawRoute(t,e,a,o,n,l=5,r=!0){t.lineWidth=l,t.lineJoin="round",t.lineCap="round";for(let a=0;a<e.length-1;a++){const[o,l]=n(e[a].lat,e[a].lon),[r,i]=n(e[a+1].lat,e[a+1].lon);t.beginPath(),t.strokeStyle=Utils.zoneColor(e[a].power??0),t.moveTo(o,l),t.lineTo(r,i),t.stroke()}const[i,s]=n(e[0].lat,e[0].lon);t.beginPath(),t.arc(i,s,2*l,0,2*Math.PI),t.fillStyle="#00ff00",t.fill(),t.strokeStyle="#ffffff",t.lineWidth=l/2,t.stroke();const c=e[e.length-1],[d,h]=n(c.lat,c.lon);t.beginPath(),t.arc(d,h,2*l,0,2*Math.PI),t.fillStyle="#ee3e36",t.fill(),t.strokeStyle="#ffffff",t.lineWidth=l/2,t.stroke(),r&&(t.globalAlpha=.4,t.fillStyle="#ffffff",t.font="11px Arial,sans-serif",t.textAlign="left",t.fillText("© CARTO, © OpenStreetMap contributors",6,o-6),t.globalAlpha=1)},renderChart(t,e,a,o,n,l,r="classic"){t.clearRect(0,0,e,a);const i=o.length;if(i<2)return;const s=t=>t.reduce((t,e)=>e>t?e:t,-1/0),c=(t,e)=>`rgba(${parseInt(t.slice(1,3),16)},${parseInt(t.slice(3,5),16)},${parseInt(t.slice(5,7),16)},${e})`,d=t=>t/(i-1)*e,h=(t=>{const e=[...t];for(let t=1;t<e.length;t++)null==e[t]&&(e[t]=e[t-1]);for(let t=e.length-2;t>=0;t--)null==e[t]&&(e[t]=e[t+1]);return e.map(t=>t??0)})(o.map(t=>t.alt)),m=h.reduce((t,e)=>e<t?e:t,1/0),p=s(h)-m||1,u=t=>a-(t-m)/p*a*.85,g=o.map(t=>t.power??0),y=n<=1?g:g.map((t,e)=>{const a=Math.max(0,e-n+1);let o=0;for(let t=a;t<=e;t++)o+=g[t];return o/(e-a+1)}),S=1.1*s(y)||1;if("classic"===r){t.save();for(let e=0;e<i-1;e++){const o=Math.floor(d(e)),n=Math.ceil(d(e+1)),l=y[e]/S*a;l<.5||(t.fillStyle=c(Utils.zoneColor(y[e]),.6),t.fillRect(o,a-l,n-o,l))}t.beginPath();for(let e=0;e<i;e++){const o=d(e),n=a-y[e]/S*a;0===e?t.moveTo(o,n):t.lineTo(o,n)}t.strokeStyle=Config.COLORS.WHITE,t.lineWidth=.6,t.globalAlpha=.8,t.stroke(),t.globalAlpha=1,t.restore(),t.save(),t.beginPath();for(let e=0;e<i;e++)0===e?t.moveTo(d(e),u(h[e])):t.lineTo(d(e),u(h[e]));t.lineTo(e,a),t.lineTo(0,a),t.closePath(),t.fillStyle="rgba(136,136,136,0.3)",t.fill(),t.restore(),t.save(),t.beginPath();for(let e=0;e<i;e++)0===e?t.moveTo(d(e),u(h[e])):t.lineTo(d(e),u(h[e]));t.strokeStyle=Config.COLORS.ELEV,t.lineWidth=2.5,t.globalAlpha=.8,t.stroke(),t.globalAlpha=1,t.restore()}else{const e=(t,e)=>`rgba(${parseInt(t.slice(1,3),16)},${parseInt(t.slice(3,5),16)},${parseInt(t.slice(5,7),16)},${e})`;t.save();for(let o=0;o<i-1;o++){const n=d(o),l=d(o+1),r=u(h[o]),i=u(h[o+1]);t.beginPath(),t.moveTo(n,a),t.lineTo(n,r),t.lineTo(l,i),t.lineTo(l,a),t.closePath(),t.fillStyle=e(Utils.zoneColor(y[o]),.45),t.fill()}t.lineWidth=1.5,t.lineCap="round",t.globalAlpha=.9;for(let e=0;e<i-1;e++)t.beginPath(),t.strokeStyle=Utils.zoneColor(y[e]),t.moveTo(d(e),u(h[e])),t.lineTo(d(e+1),u(h[e+1])),t.stroke();t.globalAlpha=1,t.restore()}const f=o.map(t=>t.hr??0),v=f.filter(t=>t>0);if(v.length>0){t.save(),t.beginPath();let e,o=!0;if("power-elevation"===r){const t=Math.min(...v),o=Math.max(...v),n=(t+o)/2,l=o-t||1,r=a-.85*a,i=(a+r)/2,s=.6*(a-r);e=t=>i-(t-n)/l*s}else e=t=>a-(t-60)/140*a;for(let a=0;a<i;a++){if(!f[a])continue;const n=d(a),l=e(f[a]);o?(t.moveTo(n,l),o=!1):t.lineTo(n,l)}t.strokeStyle=Config.COLORS.HR,t.lineWidth=1.8,t.globalAlpha=1,t.stroke(),t.globalAlpha=1,t.restore()}},drawWeatherIcon(t,e,a,o,n,l){const r="#FFB300",i=l?"rgba(70,90,130,0.85)":"rgba(200,215,240,0.90)",s="#B3E5FC",c=l?"rgba(80,100,140,0.55)":"rgba(170,190,220,0.60)",d=(e,a,o)=>{t.save(),t.fillStyle=r,t.strokeStyle=r,t.lineWidth=.13*o,t.lineCap="round",t.beginPath(),t.arc(e,a,.36*o,0,2*Math.PI),t.fill();for(let n=0;n<8;n++){const l=n*Math.PI/4;t.beginPath(),t.moveTo(e+Math.cos(l)*o*.52,a+Math.sin(l)*o*.52),t.lineTo(e+Math.cos(l)*o*.82,a+Math.sin(l)*o*.82),t.stroke()}t.restore()},h=(e,a,o,n)=>{t.save(),t.fillStyle=n,t.beginPath(),t.arc(e-.26*o,a+.06*o,.26*o,.5*Math.PI,1.5*Math.PI),t.arc(e-.02*o,a-.14*o,.34*o,1.08*Math.PI,0),t.arc(e+.3*o,a+.06*o,.22*o,1.5*Math.PI,.5*Math.PI),t.closePath(),t.fill(),t.restore()},m=(e,a,o,n)=>{t.save(),t.strokeStyle="#4FC3F7",t.lineWidth=.09*o,t.lineCap="round";for(let l=0,r=.48*o/Math.max(n-1,1);l<n;l++){const i=(l-(n-1)/2)*r;t.beginPath(),t.moveTo(e+i-.07*o,a+.42*o),t.lineTo(e+i+.07*o,a+.62*o),t.stroke()}t.restore()},p=(e,a,o,n)=>{t.save(),t.strokeStyle=s,t.fillStyle=s;for(let l=0,r=.48*o/Math.max(n-1,1);l<n;l++){const i=e+(l-(n-1)/2)*r,s=a+.52*o,c=.07*o;t.lineWidth=.9*c,t.lineCap="round";for(let e=0;e<3;e++){const a=e*Math.PI/3;t.beginPath(),t.moveTo(i-Math.cos(a)*c*2.2,s-Math.sin(a)*c*2.2),t.lineTo(i+Math.cos(a)*c*2.2,s+Math.sin(a)*c*2.2),t.stroke()}t.beginPath(),t.arc(i,s,.9*c,0,2*Math.PI),t.fill()}t.restore()};switch(e){case"clear":d(a,o,n);break;case"mostly-clear":d(a-.18*n,o-.18*n,.78*n),h(a+.08*n,o+.18*n,.58*n,i);break;case"partly-cloudy":d(a-.22*n,o-.22*n,.68*n),h(a+.04*n,o+.08*n,.75*n,i);break;case"overcast":default:h(a,o-.08*n,n,i);break;case"fog":h(a,o-.28*n,.72*n,i),u=a,g=o,y=n,t.save(),t.strokeStyle=c,t.lineWidth=.09*y,t.lineCap="round",[[.34,.7],[.52,.52],[.68,.62]].forEach(([e,a])=>{const o=y*a;t.beginPath(),t.moveTo(u-o/2,g+y*e),t.lineTo(u+o/2,g+y*e),t.stroke()}),t.restore();break;case"drizzle":h(a,o-.22*n,.82*n,i),m(a,o,.82*n,2);break;case"rain":h(a,o-.22*n,.82*n,i),m(a,o,.82*n,4);break;case"heavy-rain":h(a,o-.18*n,n,i),m(a,o,n,5);break;case"snow":h(a,o-.22*n,.82*n,i),p(a,o,.82*n,3);break;case"heavy-snow":h(a,o-.18*n,n,i),p(a,o,n,5);break;case"thunderstorm":h(a,o-.18*n,n,l?"rgba(50,65,100,0.88)":"rgba(130,148,185,0.90)"),((e,a,o)=>{t.save(),t.fillStyle="#FFD740",t.beginPath(),t.moveTo(e+.08*o,a+.3*o),t.lineTo(e-.1*o,a+.54*o),t.lineTo(e+.02*o,a+.54*o),t.lineTo(e-.08*o,a+.8*o),t.lineTo(e+.18*o,a+.5*o),t.lineTo(e+.05*o,a+.5*o),t.closePath(),t.fill(),t.restore()})(a,o,n)}var u,g,y},drawIcon(t,e,a,o,n,l){t.save(),t.strokeStyle=l,t.fillStyle=l,t.lineWidth=.085*n,t.lineCap="round",t.lineJoin="round";const r=n/2;switch(e){case"bike":t.arc(a-.45*r,o+.35*r,.3*r,0,2*Math.PI),t.stroke(),t.beginPath(),t.arc(a+.45*r,o+.35*r,.3*r,0,2*Math.PI),t.stroke(),t.beginPath(),t.moveTo(a-.45*r,o+.35*r),t.lineTo(a-.1*r,o-.1*r),t.lineTo(a+.3*r,o-.1*r),t.lineTo(a-.1*r,o+.35*r),t.stroke(),t.beginPath(),t.moveTo(a+.45*r,o+.35*r),t.lineTo(a+.15*r,o-.3*r),t.lineTo(a+.35*r,o-.3*r),t.moveTo(a-.2*r,o-.2*r),t.lineTo(a-.35*r,o-.4*r);break;case"route":t.arc(a-.3*r,o+.4*r,.18*r,0,2*Math.PI),t.stroke(),t.beginPath(),t.arc(a+.3*r,o-.4*r,.18*r,0,2*Math.PI),t.stroke(),t.beginPath(),t.moveTo(a-.3*r,o+.2*r),t.bezierCurveTo(a-.3*r,o-.1*r,a+.3*r,o+.1*r,a+.3*r,o-.2*r);break;case"clock":t.arc(a,o,.8*r,0,2*Math.PI),t.moveTo(a,o),t.lineTo(a,o-.5*r),t.moveTo(a,o),t.lineTo(a+.35*r,o+.15*r);break;case"speed":t.arc(a,o+.3*r,.85*r,.9*Math.PI,2.1*Math.PI),t.moveTo(a,o+.3*r),t.lineTo(a+Math.cos(1.3*Math.PI)*r*.65,o+.3*r+Math.sin(1.3*Math.PI)*r*.65);break;case"mountain":t.moveTo(a-.85*r,o+.55*r),t.lineTo(a-.25*r,o-.35*r),t.lineTo(a+.2*r,o+.55*r),t.moveTo(a-.15*r,o+.55*r),t.lineTo(a+.45*r,o-.05*r),t.lineTo(a+.95*r,o+.55*r);break;case"heart":t.moveTo(a,o+.3*r),t.bezierCurveTo(a-r,o-.5*r,a-.5*r,o-1.1*r,a,o-.4*r),t.bezierCurveTo(a+.5*r,o-1.1*r,a+r,o-.5*r,a,o+.3*r),t.fill();break;case"cadence":t.arc(a,o,.75*r,0,2*Math.PI),t.stroke(),t.beginPath(),t.arc(a,o,.3*r,0,2*Math.PI),t.fill(),t.beginPath(),t.moveTo(a+.5*r,o),t.arc(a,o,.5*r,0,.8*Math.PI);break;case"bolt":t.moveTo(a+.3*r,o-.85*r),t.lineTo(a-.4*r,o+.1*r),t.lineTo(a+.15*r,o+.1*r),t.lineTo(a-.2*r,o+.85*r),t.lineTo(a+.5*r,o-.1*r),t.lineTo(a-.05*r,o-.1*r),t.closePath(),t.fill();break;case"wave":t.moveTo(a-.9*r,o),t.bezierCurveTo(a-.6*r,o-.6*r,a-.3*r,o+.6*r,a,o),t.bezierCurveTo(a+.3*r,o-.6*r,a+.6*r,o+.6*r,a+.9*r,o)}t.stroke(),t.restore()}};window.Painters=Painters;const MapService={THEMES:{maritime:{bg:"#1a242b",water:"#122b3d",park:"#113831",res:"#212b34",grass:"#113831",cemetery:"#113831",sport:"#14423a",build:"#27333d",edu:"#27333d",road:"#3d4e5d",hwy:"#27333d",text:"#dae4e9"},navy:{bg:"#2c3e50",water:"#213a85",park:"#115c54",res:"#354a5e",grass:"#243b35",cemetery:"#115c54",sport:"#1a4d46",build:"#354a5e",edu:"#3b4d61",road:"#506070",hwy:"#6b7d8a",text:"#dae4e9"}},async build(t){const e=t.filter(t=>null!=t.lat&&null!=t.lon);if(!e.length)return;const a=e[0].distance??0,o=e[e.length-1].distance??0;let n=e.filter(t=>null!=t.distance&&t.distance>a+50&&t.distance<o-50);n.length<5&&(n=e),State.trim=n;const l=n.map(t=>t.lon),r=n.map(t=>t.lat),i=Math.min(...l),s=Math.max(...l),c=Math.min(...r),d=Math.max(...r);State.bounds=[[i-Config.LAYOUT.ROUTE_PAD_LON,c-Config.LAYOUT.ROUTE_PAD_LAT],[s+Config.LAYOUT.ROUTE_PAD_LON,d+Config.LAYOUT.ROUTE_PAD_LAT]],State.isPhotoMode||(State.map||(State.map=new maplibregl.Map({container:"map-container",style:Config.MAP_STYLES[State.isLightMode?"light":"dark"],interactive:!0,attributionControl:!1,preserveDrawingBuffer:!0}),State.map.on("moveend",()=>this.redrawOverlay())),State.map.resize(),State.map.fitBounds(State.bounds,{padding:40,animate:!1}),await new Promise(t=>{State.map.loaded()?t():State.map.once("idle",t)}),this.setTransparentMode(State.map,State.isPhotoMapMode)),this.redrawOverlay()},setTransparentMode(t,e){if(!t)return;const a=t.getStyle();if(!a||!a.layers)return;const o=State.mapLayerVisibility;a.layers.forEach(a=>{const n=a.id.toLowerCase();let l=!0;e&&(l="symbol"===a.type||n.includes("label")||n.includes("place")||n.includes("poi")?o.labels:"background"===n||"land"===n||"earth"===n||n.includes("landuse")||n.includes("landcover")?o.land:n.includes("water")||n.includes("waterway")||n.includes("ocean")||n.includes("lake")||n.includes("river")?o.water:n.includes("park")||n.includes("forest")||n.includes("reserve")||n.includes("wood")||n.includes("grass")?o.parks:n.includes("building")?o.buildings:!!(n.includes("road")||n.includes("bridge")||n.includes("tunnel")||n.includes("transit")||n.includes("highway")||n.includes("rail")||n.includes("aeroway"))&&o.roads);try{t.setLayoutProperty(a.id,"visibility",l?"visible":"none")}catch(t){}})},redrawOverlay(){if(!State.trim)return;const t=document.getElementById("report-card"),e=document.getElementById("overlay-canvas"),a=window.devicePixelRatio||1,o=t.clientWidth,n=t.clientHeight;e.width=o*a,e.height=n*a;const l=e.getContext("2d");if(l.scale(a,a),l.clearRect(0,0,o,n),!State.isPhotoMode&&State.map){const t=(t,e)=>{const a=State.map.project([e,t]);return[a.x,a.y]};Painters.drawRoute(l,State.trim,o,n,t,5,!1)}else if(State.isPhotoMode){const t=State.trim.map(t=>t.lon),e=State.trim.map(t=>t.lat),a=Math.min(...t),r=Math.max(...t),i=Math.min(...e),s=Math.max(...e),c=r+Config.LAYOUT.ROUTE_PAD_LON-(a-Config.LAYOUT.ROUTE_PAD_LON),d=s+Config.LAYOUT.ROUTE_PAD_LAT-(i-Config.LAYOUT.ROUTE_PAD_LAT),h=.85*Math.min(o/c,n/d),m=(o-c*h)/2,p=(n-d*h)/2,u=(t,e)=>[(e-(a-Config.LAYOUT.ROUTE_PAD_LON))*h+m,n-((t-(i-Config.LAYOUT.ROUTE_PAD_LAT))*h+p)];Painters.drawRoute(l,State.trim,o,n,u,5,!1)}},applyCustomStyle(t){const e=this.THEMES[State.mapTheme];if(!e)return;const a=t.getStyle();if(!a||!a.layers)return;const o=(t,a="#888888")=>e[t]||a;a.layers.forEach(e=>{try{const a=e.id.toLowerCase(),n=a=>t.setPaintProperty(e.id,"fill-color",o(a));if("background"!==a&&"land"!==a||t.setPaintProperty(e.id,"background"===e.type?"background-color":"fill-color",o("bg")),(a.includes("water")||"ocean"===a)&&n("water"),(a.includes("park")||a.includes("reserve")||a.includes("wood")||"landcover"===a||"landuse"===a)&&n("park"),a.includes("residential")&&n("res"),(a.includes("grass")||a.includes("garden"))&&n("grass"),a.includes("cemetery")&&n("cemetery"),(a.includes("pitch")||a.includes("golf"))&&n("sport"),a.includes("building")&&n("build"),(a.includes("hospital")||a.includes("school"))&&n("edu"),a.includes("road_")){const n=a.includes("mot_")||a.includes("trunk_")||a.includes("pri_");t.setPaintProperty(e.id,"line"===e.type?"line-color":"fill-color",o(n?"hwy":"road"))}"symbol"===e.type&&t.setPaintProperty(e.id,"text-color",o("text","#dae4e9")),State.isPhotoMapMode&&this.setTransparentMode(t,!0)}catch(t){console.warn(`Injection skip: ${e.id}`)}}),t.triggerRepaint()}};window.MapService=MapService;const Designer={IDS:["title-overlay","left-panel","right-panel","chart-overlay"],buildDefaultLayout(){const t=document.getElementById("report-card").getBoundingClientRect(),e={};for(const a of this.IDS){const o=document.getElementById(a),n=o.getBoundingClientRect();n.width>0?e[a]={xFrac:(n.left-t.left)/t.width,yFrac:(n.top-t.top)/t.height,wFrac:n.width/t.width,hFrac:n.height/t.height,opacity:parseFloat(o.style.opacity)||1,hidden:!1}:e[a]=State.layout?.[a]??{xFrac:.817,yFrac:.52,wFrac:.175,hFrac:.1,opacity:1,hidden:!1}}return e.camera={pitch:State.map?Math.round(State.map.getPitch()):0,bearing:State.map?Math.round(State.map.getBearing()):0},e.units={...State.weatherUnits},e.settings={chartMode:State.chartMode,powerSmoothing:State.powerSmoothing,mapTheme:{strava:"maritime",apple:"navy"}[State.mapTheme]??State.mapTheme,useRecalc:State.useRecalc,isPhotoMapMode:State.isPhotoMapMode,photoOpacity:State.photoOpacity,mapOpacity:State.mapOpacity,mapLayerVisibility:{...State.mapLayerVisibility},mapBlendMode:State.mapBlendMode,photoGrayscale:State.photoGrayscale,ftp:State.ftp,titleAutoSize:State.titleAutoSize},e},applyLayout(t){if(!t)return;const e=document.getElementById("report-card"),a=e.clientWidth,o=e.clientHeight,n={...t};n.units||(n.units={...State.weatherUnits}),n.camera||(n.camera={pitch:0,bearing:0});for(const t of this.IDS){n[t]||(n[t]={xFrac:0,yFrac:0,wFrac:.2,hFrac:.1,opacity:1,hidden:!1});const e=document.getElementById(t),l=n[t];e.style.left=l.xFrac*a+"px",e.style.top=l.yFrac*o+"px",e.style.width=l.wFrac*a+"px",e.style.height=l.hFrac?l.hFrac*o+"px":"",e.style.right="auto",e.style.bottom="auto",e.style.transform="none",e.style.visibility=l.hidden&&!State.isDesignerMode?"hidden":"",e.style.opacity=l.hidden&&State.isDesignerMode?"0.25":String(l.opacity??1)}if(n.units){State.weatherUnits={...n.units};const t=document.getElementById("temp-unit-select"),e=document.getElementById("wind-unit-select");t&&(t.value=State.weatherUnits.temp),e&&(e.value=State.weatherUnits.wind),State.weather&&UI.fillWeather(State.weather)}if(n.settings){const t=n.settings;if(void 0!==t.chartMode){State.chartMode=t.chartMode;const e=document.getElementById("chart-mode-select");e&&(e.value=t.chartMode)}if(void 0!==t.powerSmoothing){State.powerSmoothing=t.powerSmoothing;const e=document.getElementById("power-smooth-select");e&&(e.value=String(t.powerSmoothing))}if(void 0!==t.mapTheme){const e={strava:"maritime",apple:"navy"}[t.mapTheme]??t.mapTheme;State.mapTheme=e;const a=document.getElementById("map-theme-select");a&&(a.value=e),State.map&&("default"===e?State.map.setStyle(Config.MAP_STYLES[State.isLightMode?"light":"dark"]):MapService.applyCustomStyle(State.map))}if(void 0!==t.isPhotoMapMode){State.isPhotoMapMode=t.isPhotoMapMode;const e=document.getElementById("photo-map-mode-cb");if(e&&(e.checked=t.isPhotoMapMode),t.isPhotoMapMode){State.isPhotoMode=!1;const t=document.getElementById("photo-mode-cb");t&&(t.checked=!1)}window.updatePhotoUI&&window.updatePhotoUI()}if(void 0!==t.photoOpacity){State.photoOpacity=t.photoOpacity;const e=document.getElementById("photo-opacity-slider");e&&(e.value=t.photoOpacity);const a=document.getElementById("photo-opacity-val");a&&(a.textContent=Math.round(100*t.photoOpacity)+"%"),window.updatePhotoUI&&window.updatePhotoUI()}if(void 0!==t.mapOpacity){State.mapOpacity=t.mapOpacity;const e=document.getElementById("map-opacity-slider");e&&(e.value=t.mapOpacity);const a=document.getElementById("map-opacity-val");a&&(a.textContent=Math.round(100*t.mapOpacity)+"%"),window.updatePhotoUI&&window.updatePhotoUI()}if(void 0!==t.mapLayerVisibility){State.mapLayerVisibility={...t.mapLayerVisibility};for(const t in State.mapLayerVisibility){const e=document.getElementById(`layer-${t}-cb`);e&&(e.checked=State.mapLayerVisibility[t])}State.map&&MapService.setTransparentMode(State.map,State.isPhotoMapMode)}if(void 0!==t.mapBlendMode){State.mapBlendMode=t.mapBlendMode;const e=document.getElementById("blend-mode-select");e&&(e.value=t.mapBlendMode),window.updatePhotoUI&&window.updatePhotoUI()}if(void 0!==t.photoGrayscale){State.photoGrayscale=t.photoGrayscale;const e=document.getElementById("photo-bw-cb");e&&(e.checked=t.photoGrayscale);const a=document.getElementById("photo-bg");a&&(a.style.filter=t.photoGrayscale?"grayscale(100%)":"none")}if(void 0!==t.useRecalc){State.useRecalc=t.useRecalc;const e=document.getElementById("recalc-stats-cb");e&&(e.checked=t.useRecalc)}if(void 0!==t.ftp){State.ftp=t.ftp,localStorage.setItem("rr_ftp",t.ftp);const e=document.getElementById("ftp-input");e&&(e.value=t.ftp)}if(void 0!==t.titleAutoSize){State.titleAutoSize=t.titleAutoSize;const e=document.getElementById("title-auto-size-cb");e&&(e.checked=t.titleAutoSize)}State.rows&&(UI.fillStats(State.useRecalc?State.stats:State.summaryStats),UI.drawChart(State.rows))}const l=document.getElementById("title-overlay");if(State.titleAutoSize?(l.style.width="",l.style.height="",l.classList.add("title-auto-size")):l.classList.remove("title-auto-size"),State.layout=n,n.camera&&State.map&&!State.isPhotoMode){const t=n.camera.pitch??0,e=n.camera.bearing??0;State.map.easeTo({pitch:t,bearing:e,duration:500}),State.isDesignerMode&&this.syncCameraSliders(t,e)}},enable(){State.isDesignerMode=!0,document.getElementById("report-card").classList.add("designer-mode"),State.layout||(State.layout=this.buildDefaultLayout()),this.applyLayout(State.layout);const t=State.layout.camera??{pitch:0,bearing:0};this.syncCameraSliders(t.pitch,t.bearing),document.getElementById("camera-controls").style.display="flex",document.getElementById("weather-unit-controls").style.display="flex",State.map&&(State.map.dragPan.disable(),State.map.scrollZoom.disable(),State.map.touchZoomRotate.disable(),State.map.dragRotate.disable(),State.map.doubleClickZoom.disable());for(const t of this.IDS)this.attachControls(document.getElementById(t),t)},disable(){State.isDesignerMode=!1,document.getElementById("report-card").classList.remove("designer-mode"),document.getElementById("camera-controls").style.display="none",document.getElementById("weather-unit-controls").style.display="none",State.map&&(State.map.dragPan.enable(),State.map.scrollZoom.enable(),State.map.touchZoomRotate.enable(),State.map.dragRotate.enable(),State.map.doubleClickZoom.enable());for(const t of this.IDS){const e=document.getElementById(t);if(this.detachControls(e),State.layout?.[t]){const a=parseFloat(e.style.opacity);isNaN(a)||(State.layout[t].opacity=a)}}State.layout&&this.applyLayout(State.layout)},attachControls(t,e){this.makeDraggable(t,e),this.addHideButton(t,e),this.addResizeHandle(t,e),this.addOpacityControl(t,e)},detachControls(t){this.removeDragHandler(t),this.removeHideButton(t),this.removeResizeHandle(t),this.removeOpacityControl(t)},toggle(){State.isDesignerMode?this.disable():this.enable()},syncCameraSliders(t,e){document.getElementById("pitch-slider").value=t,document.getElementById("bearing-slider").value=e,document.getElementById("pitch-val").textContent=t+"°",document.getElementById("bearing-val").textContent=e+"°"},onCameraChange(){const t=parseInt(document.getElementById("pitch-slider").value),e=parseInt(document.getElementById("bearing-slider").value);document.getElementById("pitch-val").textContent=t+"°",document.getElementById("bearing-val").textContent=e+"°",State.layout&&(State.layout.camera={pitch:t,bearing:e}),State.map&&!State.isPhotoMode&&State.map.easeTo({pitch:t,bearing:e,duration:300})},clear(){for(const t of this.IDS){const e=document.getElementById(t);this.detachControls(e),["left","top","width","height","right","bottom","transform","visibility","opacity"].forEach(t=>{e.style[t]=""})}State.map&&State.map.easeTo({pitch:0,bearing:0,duration:300}),this.syncCameraSliders(0,0),State.layout=null},makeDraggable(t,e){let a,o,n,l;this.removeDragHandler(t);const r=e=>{if(e.target.closest(".designer-hide-btn, .designer-resize-handle, .designer-opacity-ctrl"))return;e.preventDefault();const r=document.getElementById("report-card").getBoundingClientRect(),c=t.getBoundingClientRect();a=e.clientX,o=e.clientY,n=c.left-r.left,l=c.top-r.top,t.setPointerCapture(e.pointerId),t.addEventListener("pointermove",i),t.addEventListener("pointerup",s)},i=r=>{const i=document.getElementById("report-card"),s=i.clientWidth,c=i.clientHeight,d=Math.max(0,Math.min(s-t.offsetWidth,n+r.clientX-a)),h=Math.max(0,Math.min(c-t.offsetHeight,l+r.clientY-o));t.style.left=d+"px",t.style.top=h+"px",State.layout?.[e]&&(State.layout[e].xFrac=d/s,State.layout[e].yFrac=h/c)},s=()=>{t.removeEventListener("pointermove",i),t.removeEventListener("pointerup",s)};t._onDown=r,t.addEventListener("pointerdown",r)},removeDragHandler(t){t._onDown&&(t.removeEventListener("pointerdown",t._onDown),delete t._onDown)},addResizeHandle(t,e){this.removeResizeHandle(t);const a=document.createElement("div");a.className="designer-resize-handle",a.addEventListener("pointerdown",o=>{o.preventDefault(),o.stopPropagation();const n=document.getElementById("report-card"),l=t.offsetWidth,r=t.offsetHeight,i=o.clientX,s=o.clientY;a.setPointerCapture(o.pointerId);const c=a=>{const o=n.clientWidth,c=n.clientHeight,d=Math.max(80,Math.min(o-t.offsetLeft,l+a.clientX-i)),h=Math.max(40,Math.min(c-t.offsetTop,r+a.clientY-s));t.style.width=d+"px",t.style.height=h+"px",State.layout?.[e]&&(State.layout[e].wFrac=d/o,State.layout[e].hFrac=h/c)},d=()=>{a.removeEventListener("pointermove",c),a.removeEventListener("pointerup",d)};a.addEventListener("pointermove",c),a.addEventListener("pointerup",d)}),t.appendChild(a),t._resizeHandle=a},removeResizeHandle(t){t._resizeHandle&&(t._resizeHandle.remove(),delete t._resizeHandle),t.querySelectorAll(".designer-resize-handle").forEach(t=>t.remove())},addOpacityControl(t,e){this.removeOpacityControl(t);const a=document.createElement("div");a.className="designer-opacity-ctrl";const o=document.createElement("span");o.textContent="opacity";const n=document.createElement("input");n.type="range",n.min="0",n.max="1",n.step="0.05",n.value=String(State.layout?.[e]?.opacity??1),n.addEventListener("input",a=>{a.stopPropagation();const o=parseFloat(n.value);State.layout?.[e]&&(State.layout[e].opacity=o),State.layout?.[e]?.hidden||(t.style.opacity=String(o))}),n.addEventListener("pointerdown",t=>t.stopPropagation()),a.appendChild(o),a.appendChild(n),t.appendChild(a),t._opacityCtrl=a},removeOpacityControl(t){t._opacityCtrl&&(t._opacityCtrl.remove(),delete t._opacityCtrl),t.querySelectorAll(".designer-opacity-ctrl").forEach(t=>t.remove())},addHideButton(t,e){this.removeHideButton(t);const a=State.layout?.[e]?.hidden??!1,o=document.createElement("button");o.className="designer-hide-btn";const n=t=>{o.textContent=t?"+":"×",o.title=t?"Show":"Hide",o.style.background=t?"rgba(0,180,0,0.85)":"rgba(200,30,30,0.85)"};n(a),o.onclick=a=>{a.stopPropagation();const o=!State.layout[e].hidden;State.layout[e].hidden=o,t.style.opacity=o?"0.25":String(State.layout[e].opacity??1),n(o)},t.appendChild(o),t._hideBtn=o},removeHideButton(t){t._hideBtn&&(t._hideBtn.remove(),delete t._hideBtn),t.querySelectorAll(".designer-hide-btn").forEach(t=>t.remove())},save(){State.layout=this.buildDefaultLayout();const t=document.createElement("a");t.download="ride-report-layout.json",t.href="data:application/json,"+encodeURIComponent(JSON.stringify(State.layout,null,2)),t.click()}};window.Designer=Designer;const WeatherService={async fetch(){if(!State.trim?.length)return void UI.setStatus("No GPS data — weather not available for virtual rides.");const t=document.getElementById("fetch-weather-btn");t.textContent="Fetching…",t.disabled=!0;try{const t=State.rows.find(t=>null!=t.ts),e=State.trim[0],a=t?.ts;if(!a||!e)throw new Error("Incomplete start data");const o=a.toISOString().slice(0,10),n=a.getUTCHours(),l=`https://archive-api.open-meteo.com/v1/archive?latitude=${e.lat.toFixed(4)}&longitude=${e.lon.toFixed(4)}&start_date=${o}&end_date=${o}&hourly=temperature_2m,windspeed_10m,winddirection_10m,weathercode&timezone=UTC`,r=await fetch(l);if(!r.ok)throw new Error(`API error ${r.status}`);const i=(await r.json()).hourly,[s,c]=Config.WMO[i.weathercode[n]]??["overcast","Unknown"];State.weather={temp_c:i.temperature_2m[n],windspeed_kmh:i.windspeed_10m[n],winddeg:i.winddirection_10m[n],condition:s,condLabel:c},UI.fillWeather(State.weather),UI.setStatus("")}catch(t){UI.setStatus("Weather fetch failed: "+t.message)}finally{t.textContent="⛅ Weather",t.disabled=!1}}};window.WeatherService=WeatherService;const Exporter={async renderExportMap(t,e,a){const o=1200,n=Math.round(o*a/e),l=e/o,r=document.createElement("div");r.style.cssText=`position:fixed;left:-9999px;top:0;width:1200px;height:${n}px;`,document.body.appendChild(r);const i=new maplibregl.Map({container:r,style:Config.MAP_STYLES[State.isLightMode?"light":"dark"],interactive:!1,attributionControl:!1,preserveDrawingBuffer:!0,pixelRatio:l}),s=document.getElementById("report-card");i.jumpTo({center:State.map.getCenter(),zoom:State.map.getZoom()+Math.log2(o/s.clientWidth),bearing:State.map.getBearing(),pitch:State.map.getPitch()}),await new Promise(t=>{i.loaded()?t():i.once("idle",t)}),"default"!==State.mapTheme&&(MapService.applyCustomStyle(i),await new Promise(t=>i.once("idle",t))),t.drawImage(i.getCanvas(),0,0,e,a);const c=document.createElement("canvas");c.width=e,c.height=a,Painters.drawRoute(c.getContext("2d"),State.trim,e,a,(t,e)=>{const a=i.project([e,t]);return[a.x*l,a.y*l]},18,!1),t.drawImage(c,0,0),i.remove(),document.body.removeChild(r)},async start(t=!1){if(!State.rows||!State.stats)return;const e=document.getElementById("report-card"),a=State.useRecalc?State.stats:State.summaryStats,o=document.getElementById("export-overlay");o.classList.add("on");try{if(t){const t=e.clientWidth,o=e.clientHeight,n=window.devicePixelRatio||1,l=document.createElement("canvas");l.width=t*n,l.height=o*n;const r=l.getContext("2d");r.scale(n,n),State.photo&&(State.isPhotoMode||State.isPhotoMapMode)&&(State.photoGrayscale&&(r.filter="grayscale(1)"),r.globalAlpha=State.photoOpacity,r.drawImage(State.photo,0,0,t,o),r.globalAlpha=1,r.filter="none"),State.map&&!State.isPhotoMode&&(r.globalCompositeOperation=State.isPhotoMapMode?State.mapBlendMode||"normal":"source-over",r.globalAlpha=State.isPhotoMapMode?State.mapOpacity:1,r.drawImage(State.map.getCanvas(),0,0,t,o),r.globalAlpha=1,r.globalCompositeOperation="source-over");const i=document.getElementById("overlay-canvas");i&&r.drawImage(i,0,0,t,o);const s=await html2canvas(e,{useCORS:!0,allowTaint:!0,backgroundColor:null,scale:n,logging:!1,onclone:t=>{t.querySelectorAll(".designer-hide-btn,.designer-resize-handle,.designer-opacity-ctrl").forEach(t=>t.remove());const e=t.getElementById("report-card"),a=t.getElementById("photo-bg"),o=t.getElementById("map-container"),n=t.getElementById("overlay-canvas");e&&(e.style.background="transparent"),a&&(a.style.display="none"),o&&(o.style.visibility="hidden"),n&&(n.style.display="none")}});if(r.drawImage(s,0,0,t,o),"strava"===State.dataSource){const t=Math.round(.013*o);r.save(),r.textAlign="left",r.textBaseline="alphabetic",r.font=`400 ${t}px Arial,sans-serif`,r.globalAlpha=.55,r.fillStyle="#ffffff",r.fillText("Powered by",12,o-8);const e=r.measureText("Powered by ").width;r.globalAlpha=.85,r.fillStyle="#FC5200",r.font=`700 ${t}px Arial,sans-serif`,r.fillText("STRAVA",12+e,o-8),r.restore()}if(window.__rr_headless)return window.__rr_png_b64=l.toDataURL("image/png").split(",")[1],void(window.__rr_done=!0);const c=(a.title||"ride").replace(/[^a-z0-9]/gi,"_").replace(/_+/g,"_"),d=document.createElement("a");return d.download=`${c}_screen.png`,d.href=l.toDataURL("image/png"),void d.click()}const o=Config.LAYOUT.EXPORT_W,n=Config.LAYOUT.EXPORT_H,l=State.theme,r=document.createElement("canvas");r.width=o,r.height=n;const i=r.getContext("2d");if((State.isPhotoMode||State.isPhotoMapMode)&&State.photo){i.save(),i.globalAlpha=State.photoOpacity,i.filter="grayscale(100%)";const t=State.photo.naturalWidth/State.photo.naturalHeight,e=o/n;let a,l,r,s;t>e?(s=State.photo.naturalHeight,r=s*e,a=(State.photo.naturalWidth-r)/2,l=0):(r=State.photo.naturalWidth,s=r/e,a=0,l=(State.photo.naturalHeight-s)/2),i.drawImage(State.photo,a,l,r,s,0,0,o,n),i.filter="none",i.restore()}State.isPhotoMode?i.drawImage(document.getElementById("overlay-canvas"),0,0,o,n):(State.isPhotoMapMode&&(i.save(),i.globalCompositeOperation="screen",i.globalAlpha=State.mapOpacity),await this.renderExportMap(i,o,n),State.isPhotoMapMode&&i.restore());const s=(t,e,a,n,l,r=.55,s="rgba(255,255,255,0.08)",c=null)=>{i.save(),i.shadowColor="rgba(0,0,0,0.2)",i.shadowBlur=20,i.shadowOffsetY=5,i.beginPath(),i.roundRect(t,e,a,n,l),i.fillStyle=State.isLightMode?`rgba(240,243,250,${r})`:`rgba(8,14,24,${r})`,i.fill(),i.shadowBlur=0,i.shadowOffsetY=0,c&&(i.save(),i.globalCompositeOperation="source-atop",i.fillStyle=c,i.globalAlpha=.08,i.fillRect(t,e,a,n),i.restore()),i.strokeStyle=s,i.lineWidth=Math.round(5e-4*o)||1,i.stroke(),i.restore()},c=Math.round(.008*o),d=State.layout?.["title-overlay"]?.hFrac,h=d?Math.max(20,Math.round(d*n/2.32)):Math.round(.058*n),m=Math.round(.42*h);i.letterSpacing=Math.round(.06*h)+"px",i.font=`700 ${h}px 'Barlow Condensed',Arial,sans-serif`;const p=i.measureText(a.title).width;i.letterSpacing=Math.round(.12*m)+"px",i.font=`600 ${m}px 'Barlow Condensed',Arial,sans-serif`;const u=i.measureText(a.dateStr).width;i.letterSpacing="0px";const g=h+m+Math.round(1.1*h),y=Math.max(p,u)+1.2*g,S=(o-y)/2,f=c;i.save(),i.globalAlpha=State.layout?.["title-overlay"]?.opacity??1,s(S,f,y,g,Math.round(.22*g));const v=Math.round(.58*g),w=S+Math.round(.15*g)+v/2,M=f+g/2;i.save(),i.fillStyle="rgba(0,0,0,0.25)",i.beginPath(),i.roundRect(w-v/2-10,M-v/2-10,v+20,v+20,12),i.fill(),Painters.drawIcon(i,"bike",w,M,.72*v,l.textPrimary),i.restore(),i.textAlign="left",i.fillStyle=l.textPrimary,i.font=`700 ${h}px 'Barlow Condensed',Arial,sans-serif`,i.letterSpacing=Math.round(.06*h)+"px";const b=w+v/2+25;i.fillText(a.title,b,f+1.05*h),i.fillStyle=l.textSub,i.font=`600 ${m}px 'Barlow Condensed',Arial,sans-serif`,i.letterSpacing=Math.round(.12*m)+"px",i.fillText(a.dateStr.toUpperCase(),b,f+1.05*h+1.5*m),i.letterSpacing="0px",i.restore();const I=Math.round(.007*n),E=Math.round((State.layout?.["left-panel"]?.wFrac??Config.LAYOUT.PANEL_W_RATIO)*o),x=Math.round((State.layout?.["right-panel"]?.wFrac??Config.LAYOUT.PANEL_W_RATIO)*o),C=State.layout?.["left-panel"]?.hFrac?Math.max(40,Math.round((State.layout["left-panel"].hFrac*n-4*I)/5)):Math.round(.09*n),T=c,P=o-c-x,B=f+g+Math.round(.015*n),_=Math.round(.52*C),A=Math.round(.4*_),k=Math.round(.18*C),R=(t,e,a,o,n,r,c,d,h=!1)=>{const m=h?c:null;s(t,e,a,C,Math.round(.18*C),.55,"rgba(255,255,255,0.06)",m);const p=Math.round(.42*C);i.font=`700 ${_}px 'Barlow Condensed',Arial,sans-serif`;const u=i.measureText(String(o)).width;i.font=`700 ${A}px 'Barlow Condensed',Arial,sans-serif`;const g=t+(a-(p+15+u+(n?i.measureText(n).width+4:0)))/2,y=g+p/2,S=e+.42*C;Painters.drawIcon(i,d,y,S,p,c);const f=g+p+15,v=e+.62*C;i.textAlign="left",i.fillStyle=l.textPrimary,i.font=`700 ${_}px 'Barlow Condensed',Arial,sans-serif`,i.fillText(String(o),f,v),n&&(i.font=`700 ${A}px 'Barlow Condensed',Arial,sans-serif`,i.fillStyle=c,i.save(),i.globalAlpha*=.85,i.fillText(n,f+u+4,v),i.restore()),i.fillStyle=l.textMuted,i.font=`400 ${k}px 'Barlow',Arial,sans-serif`,i.textAlign="center",i.fillText(r.toUpperCase(),t+a/2,e+.88*C)};if(i.save(),i.globalAlpha=State.layout?.["left-panel"]?.opacity??1,[{val:a.distKm,unit:"KM",lbl:"Distance",color:l.textPrimary,ico:"route"},{val:a.durStr,unit:"",lbl:"Moving Time",color:l.textPrimary,ico:"clock"},{val:a.avgKmh,unit:"KMH",lbl:"Avg Speed",color:l.textPrimary,ico:"speed"},{val:a.totalGain,unit:"M",lbl:"Elev Gain",color:l.textPrimary,ico:"mountain"}].forEach((t,e)=>{R(T,B+e*(C+I),E,t.val,t.unit,t.lbl,t.color,t.ico)}),State.weather){const t="F"===State.weatherUnits.temp?Math.round(9*State.weather.temp_c/5+32):Math.round(State.weather.temp_c),e="F"===State.weatherUnits.temp?"°F":"°C",a="mph"===State.weatherUnits.wind?Math.round(.621371*State.weather.windspeed_kmh):Math.round(State.weather.windspeed_kmh),o="mph"===State.weatherUnits.wind?"mph":"km/h",n=B+4*(C+I);s(T,n,E,C,Math.round(.18*C),.55,"rgba(255,255,255,0.06)",l.accentSpeed);const r=Math.round(.42*C);i.font=`700 ${_}px 'Barlow Condensed',Arial,sans-serif`;const c=i.measureText(String(t)).width;i.font=`700 ${A}px 'Barlow Condensed',Arial,sans-serif`;const d=i.measureText(e).width+4,h=T+(E-(r+15+c+d))/2,m=h+r/2,p=n+.42*C;Painters.drawWeatherIcon(i,State.weather.condition,m,p,.5*r,State.isLightMode);const u=h+r+15,g=n+.62*C;i.textAlign="left",i.fillStyle=l.accentSpeed,i.font=`700 ${_}px 'Barlow Condensed',Arial,sans-serif`,i.fillText(String(t),u,g),i.font=`700 ${A}px 'Barlow Condensed',Arial,sans-serif`,i.save(),i.globalAlpha*=.85,i.fillText(e,u+c+4,g),i.restore(),i.fillStyle=l.accentSpeed,i.font=`400 ${k}px 'Barlow',Arial,sans-serif`,i.textAlign="center",i.fillText(`${a} ${o} ${Utils.degToCardinal(State.weather.winddeg)}`.toUpperCase(),T+E/2,n+.88*C)}i.restore(),i.save(),i.globalAlpha=State.layout?.["right-panel"]?.opacity??1;const L=Math.floor((x-I)/2),O=B,U=B+C+I,D=B+2*(C+I);if(R(P,O,L,a.avgHR>0?a.avgHR:"—",a.avgHR>0?"BPM":"","Avg HR",l.accentHr,"heart",!0),R(P+L+I,O,L,a.maxHR>0?a.maxHR:"—",a.maxHR>0?"BPM":"","Max HR",l.accentHr,"heart",!0),R(P,U,L,a.avgCad>0?a.avgCad:"—",a.avgCad>0?"RPM":"","Avg Cadence",l.accentCadence,"cadence",!0),R(P+L+I,U,L,a.maxCad>0?a.maxCad:"—",a.maxCad>0?"RPM":"","Max Cadence",l.accentCadence,"cadence",!0),R(P,D,L,a.avgPwr>0?a.avgPwr:"—",a.avgPwr>0?"W":"","Avg Power",l.accentPower,"bolt",!0),R(P+L+I,D,L,a.np>0?a.np:"—",a.np>0?"W":"","NP",l.accentPower,"wave",!0),a.lr){const t=D+C+I,e=Math.round(.75*C);s(P,t,x,e,Math.round(.25*e));const o=a.lr.left,n=a.lr.right,r=Math.round(.28*e),c=Math.round(.75*r),d=Math.round(.2*e),h=Math.round(.06*x),m=t+.72*e,p=x-2*h,u=t+.46*e;i.textAlign="left",i.font=`700 ${r}px 'Barlow Condensed',Arial,sans-serif`,i.fillStyle=l.accentBlue,i.fillText(`L ${o}%`,P+h,u),i.textAlign="center",i.font=`400 ${c}px 'Barlow',Arial,sans-serif`,i.fillStyle=l.textMuted,i.fillText("L/R BAL",P+x/2,u),i.textAlign="right",i.font=`700 ${r}px 'Barlow Condensed',Arial,sans-serif`,i.fillStyle=l.accentOrange,i.fillText(`${n}% R`,P+x-h,u);const g=P+h,y=d/2;i.beginPath(),i.roundRect(g,m,p*o/100,d,[y,0,0,y]),i.fillStyle=l.accentBlue,i.fill(),i.beginPath(),i.roundRect(g+p*o/100,m,p*n/100,d,[0,y,y,0]),i.fillStyle=l.accentOrange,i.fill()}i.restore();const H=Math.round((State.layout?.["chart-overlay"]?.hFrac??Config.LAYOUT.CHART_OVERLAY_RATIO)*n),$=Math.round((State.layout?.["chart-overlay"]?.wFrac??.984)*o),F=Math.round((o-$)/2),z=n-H-c,N=n/776*14;i.save(),i.globalAlpha=State.layout?.["chart-overlay"]?.opacity??1,s(F,z,$,H,Math.round(N));const W=Math.round(.16*H),Y=H-W,Z=c,V=Math.round(.5*W),j=z+.72*W,G=Math.round(1.4*V),J=Math.round(.18*V);i.font=`500 ${V}px 'Barlow',Arial,sans-serif`,i.fillStyle=Config.COLORS.HR,i.fillRect(F+Z,j-J,G,J),i.fillStyle=l.textMuted,i.textAlign="left",i.fillText("HEART RATE",F+Z+G+.5*V,j);const K=F+Z+G+.5*V+i.measureText("HEART RATE").width+1.2*V;i.fillStyle="rgba(140,140,140,0.7)",i.fillRect(K,j-J,G,J),i.fillStyle=l.textMuted,i.fillText("ELEVATION",K+G+.5*V,j);const q=K+G+.5*V+i.measureText("ELEVATION").width+1.2*V;i.fillStyle=Config.ZONES.Z2,i.fillRect(q,j-J,Math.round(.34*G),J),i.fillStyle=Config.ZONES.Z4,i.fillRect(q+Math.round(.34*G),j-J,Math.round(.33*G),J),i.fillStyle=Config.ZONES["Z6+"],i.fillRect(q+Math.round(.67*G),j-J,Math.round(.33*G),J),i.fillStyle=l.textMuted,i.fillText("POWER ZONES",q+G+.5*V,j);const X=document.createElement("canvas");if(X.width=$,X.height=Y,Painters.renderChart(X.getContext("2d"),$,Y,State.rows,State.powerSmoothing,l,State.chartMode),i.drawImage(X,F,z+W),i.restore(),i.globalAlpha=.18,i.fillStyle="#ffffff",i.font=`400 ${Math.round(.011*n)}px Arial,sans-serif`,i.textAlign="right",i.fillText(Config.VERSION,o-16,n-10),i.globalAlpha=1,"strava"===State.dataSource){const t=Math.round(.013*n),e=n-10;i.save(),i.textAlign="left",i.textBaseline="alphabetic",i.font=`400 ${t}px Arial,sans-serif`,i.globalAlpha=.55,i.fillStyle="#ffffff",i.fillText("Powered by",16,e);const a=i.measureText("Powered by ").width;i.globalAlpha=.85,i.fillStyle="#FC5200",i.font=`700 ${t}px Arial,sans-serif`,i.fillText("STRAVA",16+a,e),i.restore()}const Q=(a.title||"ride").replace(/[^a-z0-9]/gi,"_").replace(/_+/g,"_"),tt=document.createElement("a");tt.download=`${Q}_${Config.VERSION}.png`,tt.href=r.toDataURL("image/png"),tt.click()}catch(t){alert("Export error: "+t.message),console.error(t)}finally{o.classList.remove("on")}}};window.Exporter=Exporter;const UI={setStatus(t){document.getElementById("status").textContent=t},sv(t,e,a,o=""){const n=a?`<span class="panel-unit${o?" "+o:""}">${a}</span>`:"";document.getElementById(t).innerHTML=e+n},fillStats(t){document.getElementById("ride-title").textContent=State.customTitle||t.title,document.getElementById("ride-date").textContent=t.dateStr;const e=State.theme,a=(t,e,a)=>{const o=document.getElementById(t);if(!o)return;const n=window.devicePixelRatio||1;o.width=32*n,o.height=32*n,o.style.width="32px",o.style.height="32px";const l=o.getContext("2d");l.scale(n,n),Painters.drawIcon(l,e,16,16,25.6,a)},o=document.getElementById("icon-bike");if(o){const t=window.devicePixelRatio||1,a=52;o.width=a*t,o.height=a*t,o.style.width=a+"px",o.style.height=a+"px";const n=o.getContext("2d");n.scale(t,t),Painters.drawIcon(n,"bike",a/2,a/2,.72*a,e.textPrimary)}a("icon-dist","route",e.textPrimary),a("icon-time","clock",e.textPrimary),a("icon-speed","speed",e.textPrimary),a("icon-elev","mountain",e.textPrimary),a("icon-hr","heart",e.accentHr),a("icon-max-hr","heart",e.accentHr),a("icon-cad","cadence",e.accentCadence),a("icon-max-cad","cadence",e.accentCadence),a("icon-pwr","bolt",e.accentPower),a("icon-np","wave",e.accentPower),this.sv("p-dist",t.distKm,"KM"),this.sv("p-time",t.durStr,""),this.sv("p-speed",t.avgKmh,"KMH"),this.sv("p-elev",t.totalGain,"M"),this.sv("p-hr",t.avgHR>0?t.avgHR:"—",t.avgHR>0?"BPM":"","accent-hr"),this.sv("p-max-hr",t.maxHR>0?t.maxHR:"—",t.maxHR>0?"BPM":"","accent-hr"),this.sv("p-cad",t.avgCad>0?t.avgCad:"—",t.avgCad>0?"RPM":"","accent-cadence"),this.sv("p-max-cad",t.maxCad>0?t.maxCad:"—",t.maxCad>0?"RPM":"","accent-cadence"),this.sv("p-pwr",t.avgPwr>0?t.avgPwr:"—",t.avgPwr>0?"W":"","accent-power"),this.sv("p-np",t.np>0?t.np:"—",t.np>0?"W":"","accent-power");const n=document.getElementById("lr-panel");t.lr?(document.getElementById("p-lr-left").textContent=`L ${t.lr.left}%`,document.getElementById("p-lr-right").textContent=`${t.lr.right}% R`,document.getElementById("lr-bar-blue").style.width=t.lr.left+"%",document.getElementById("lr-bar-orange").style.width=t.lr.right+"%",n.style.display="block"):n.style.display="none"},fillWeather(t){document.getElementById("weather-panel").style.display="block";const e="F"===State.weatherUnits.temp?Math.round(9*t.temp_c/5+32):Math.round(t.temp_c),a="mph"===State.weatherUnits.wind?Math.round(.621371*t.windspeed_kmh):Math.round(t.windspeed_kmh),o="F"===State.weatherUnits.temp?"°F":"°C",n="mph"===State.weatherUnits.wind?"mph":"km/h";document.getElementById("p-weather-temp").innerHTML=`${e}<span class="panel-unit">${o}</span>`,document.getElementById("p-weather-wind").textContent=`${a} ${n} ${Utils.degToCardinal(t.winddeg)}`;const l=document.getElementById("weather-icon"),r=window.devicePixelRatio||1;l.width=32*r,l.height=32*r,l.style.width="32px",l.style.height="32px";const i=l.getContext("2d");i.scale(r,r),Painters.drawWeatherIcon(i,t.condition,16,16,25.6*.7,State.isLightMode)},togglePanel(t){const e=document.getElementById(t),a=e.classList.contains("open");document.querySelectorAll(".dropdown-panel").forEach(t=>{t.classList.remove("open"),t.previousElementSibling?.classList.remove("active")}),a||(e.classList.add("open"),e.previousElementSibling?.classList.add("active"))},drawChart(t){const e=document.getElementById("chart-wrap"),a=document.getElementById("chart-canvas"),o=e.clientWidth>0?e.clientWidth:1380,n=e.clientHeight>0?e.clientHeight:200;a.width=o,a.height=n,Painters.renderChart(a.getContext("2d"),o,n,t,State.powerSmoothing,State.theme,State.chartMode)},reset(){State.isDesignerMode&&Designer.disable(),Designer.clear(),document.getElementById("report-wrapper").style.display="none",document.getElementById("landing").style.display="flex",document.getElementById("file-input").value="",State.photo=null,State.isPhotoMode=!1,State.isPhotoMapMode=!1,State.photoOpacity=.5,State.mapOpacity=.85,State.mapLayerVisibility={roads:!0,labels:!0,parks:!0,water:!0,land:!0},State.mapTheme="default",State.powerSmoothing=1,State.weather=null,State.weatherUnits={temp:"C",wind:"kmh"},document.getElementById("weather-panel").style.display="none",document.getElementById("power-smooth-select").value="1",document.getElementById("photo-mode-cb").checked=!1,document.getElementById("photo-map-mode-cb").checked=!1,document.getElementById("photo-opacity-slider").value="0.5",document.getElementById("photo-opacity-val").textContent="50%",document.getElementById("photo-opacity-row").style.display="none",document.getElementById("map-opacity-slider").value="0.85",document.getElementById("map-opacity-val").textContent="85%",document.getElementById("map-opacity-row").style.display="none",["roads","labels","parks","water","land"].forEach(t=>{const e=document.getElementById(`layer-${t}-cb`);e&&(e.checked=!0)}),document.getElementById("map-layers-row").style.display="none",document.getElementById("photo-chooser").style.display="none";const t=document.getElementById("photo-bg");t.style.display="none",t.style.backgroundImage="none",t.style.opacity="0.5";const e=document.getElementById("map-container");e.style.visibility="visible",e.style.mixBlendMode="normal",e.style.opacity="1",document.getElementById("map-theme-select").value="default",State.map&&(State.map.remove(),State.map=null),this.setStatus("")}};window.UI=UI;const App={async handleFile(t){const e=t.name.toLowerCase(),a=e.endsWith(".json");if(e.endsWith(".fit")||a)if(t.size>52428800)UI.setStatus("File too large. Maximum 50MB allowed.");else try{if(a){UI.setStatus("Parsing Strava JSON…");const e=JSON.parse(await t.text());if("strava"!==e.source)return void UI.setStatus("Not a Strava export file.");const{rowData:a,summaryStats:o}=StravaParser.parse(e);if(!a.length)return void UI.setStatus("No stream data found.");State.rows=a,State.stats=Analytics.calculate(a,e.activity_name||"Strava Ride"),State.summaryStats=o,State.dataSource="strava"}else{UI.setStatus("Parsing FIT file…");const{rowData:e,summaryMsgs:a}=await FitParser.parse(await t.arrayBuffer());if(!e.length)return void UI.setStatus("No record data found.");State.rows=e,State.stats=Analytics.calculate(e,t.name),State.summaryStats=Analytics.parseSummary(a,t.name,e)||State.stats,State.dataSource="fit"}return this._render()}catch(t){throw UI.setStatus("Error: "+t.message),console.error(t),t}else UI.setStatus("Please select a .fit or Strava .json file.")},async loadStravaActivity(t){try{UI.setStatus("Fetching streams from Strava…");const e=await StravaService.fetchStreams(t.id),a={source:"strava",athlete_id:String(t.athlete.id),activity_id:String(t.id),activity_name:t.name,start_date:t.start_date,start_date_local:t.start_date_local,summary:t,streams:e},{rowData:o,summaryStats:n}=StravaParser.parse(a);return o.length?(State.rows=o,State.stats=Analytics.calculate(o,t.name),State.summaryStats=n,State.dataSource="strava",this._render()):void UI.setStatus("No stream data found.")}catch(t){throw UI.setStatus("Error: "+t.message),console.error(t),t}},_render(){document.getElementById("landing").style.display="none",document.getElementById("report-wrapper").style.display="flex";const t=document.getElementById("strava-badge");return t&&(t.style.display="strava"===State.dataSource?"flex":"none"),new Promise((t,e)=>{requestAnimationFrame(()=>{requestAnimationFrame(async()=>{try{UI.setStatus("Rendering…"),State.useRecalc=document.getElementById("recalc-stats-cb").checked,UI.fillStats(State.useRecalc?State.stats:State.summaryStats),await MapService.build(State.rows),UI.drawChart(State.rows),State.map&&State.map.resize(),UI.setStatus(""),t()}catch(t){UI.setStatus("Error: "+t.message),console.error(t),e(t)}})})})}};window.App=App,document.addEventListener("click",t=>{t.target.closest(".dropdown-group")||document.querySelectorAll(".dropdown-panel").forEach(t=>{t.classList.remove("open"),t.previousElementSibling?.classList.remove("active")})});const dz=document.getElementById("drop-zone");dz.addEventListener("dragover",t=>{t.preventDefault(),dz.classList.add("drag-over")}),dz.addEventListener("dragleave",()=>dz.classList.remove("drag-over")),dz.addEventListener("drop",t=>{t.preventDefault(),dz.classList.remove("drag-over"),t.dataTransfer.files[0]&&App.handleFile(t.dataTransfer.files[0])}),document.getElementById("file-input").addEventListener("change",t=>{t.target.files[0]&&App.handleFile(t.target.files[0])}),document.getElementById("layout-file-input").addEventListener("change",t=>{const e=t.target.files[0];if(!e)return;const a=new FileReader;a.onload=t=>{try{Designer.applyLayout(JSON.parse(t.target.result)),UI.setStatus("Layout loaded.")}catch{UI.setStatus("Invalid layout file.")}},a.readAsText(e),t.target.value=""}),document.getElementById("photo-file-input").addEventListener("change",t=>{const e=t.target.files[0];if(!e)return;const a=URL.createObjectURL(e),o=new Image;o.onload=()=>{State.photo=o,document.getElementById("photo-bg").style.backgroundImage=`url(${a})`,updatePhotoUI()},o.src=a});const togglePanel=t=>UI.togglePanel(t),toggleLightMode=()=>{State.isLightMode=document.getElementById("light-mode-cb").checked,document.getElementById("report-card").classList.toggle("light-theme",State.isLightMode),State.map&&State.map.setStyle(Config.MAP_STYLES[State.isLightMode?"light":"dark"]),State.rows&&(MapService.build(State.rows),UI.drawChart(State.rows))},togglePhotoMode=()=>{State.isPhotoMode=document.getElementById("photo-mode-cb").checked,State.isPhotoMode&&(State.isPhotoMapMode=!1,document.getElementById("photo-map-mode-cb").checked=!1),updatePhotoUI()},togglePhotoMapMode=()=>{State.isPhotoMapMode=document.getElementById("photo-map-mode-cb").checked,State.isPhotoMapMode&&(State.isPhotoMode=!1,document.getElementById("photo-mode-cb").checked=!1),updatePhotoUI()};window.updatePhotoUI=()=>{const t=State.isPhotoMode||State.isPhotoMapMode;document.getElementById("photo-chooser").style.display=t?"inline-block":"none",document.getElementById("photo-opacity-row").style.display=t?"flex":"none",document.getElementById("map-opacity-row").style.display=State.isPhotoMapMode?"flex":"none",document.getElementById("blend-mode-row").style.display=State.isPhotoMapMode?"flex":"none",document.getElementById("map-layers-row").style.display=State.isPhotoMapMode?"flex":"none",document.getElementById("map-container").style.visibility=State.isPhotoMode?"hidden":"visible";const e=document.getElementById("map-container");if(State.isPhotoMapMode?(e.style.mixBlendMode=State.mapBlendMode,e.style.opacity=State.mapOpacity):(e.style.mixBlendMode="normal",e.style.opacity="1"),State.map&&MapService.setTransparentMode(State.map,State.isPhotoMapMode),t){if(State.photo){const t=document.getElementById("photo-bg");t.style.display="block",t.style.opacity=State.photoOpacity}}else{State.photo=null;const t=document.getElementById("photo-bg");t.style.display="none",t.style.backgroundImage="none"}State.rows&&MapService.build(State.rows)};const onLayerToggle=t=>{State.mapLayerVisibility[t]=document.getElementById(`layer-${t}-cb`).checked,State.map&&MapService.setTransparentMode(State.map,State.isPhotoMapMode)},onPhotoOpacityChange=()=>{State.photoOpacity=parseFloat(document.getElementById("photo-opacity-slider").value),document.getElementById("photo-opacity-val").textContent=Math.round(100*State.photoOpacity)+"%";const t=document.getElementById("photo-bg");t&&(t.style.opacity=State.photoOpacity)},onPhotoBWChange=()=>{State.photoGrayscale=document.getElementById("photo-bw-cb").checked;const t=document.getElementById("photo-bg");t&&(t.style.filter=State.photoGrayscale?"grayscale(100%)":"none")},onMapOpacityChange=()=>{State.mapOpacity=parseFloat(document.getElementById("map-opacity-slider").value),document.getElementById("map-opacity-val").textContent=Math.round(100*State.mapOpacity)+"%";const t=document.getElementById("map-container");t&&State.isPhotoMapMode&&(t.style.opacity=State.mapOpacity)},onBlendModeChange=()=>{State.mapBlendMode=document.getElementById("blend-mode-select").value;const t=document.getElementById("map-container");t&&State.isPhotoMapMode&&(t.style.mixBlendMode=State.mapBlendMode)},onMapThemeChange=()=>{State.mapTheme=document.getElementById("map-theme-select").value,State.map&&("default"===State.mapTheme?State.map.setStyle(Config.MAP_STYLES[State.isLightMode?"light":"dark"]):MapService.applyCustomStyle(State.map))},toggleRecalc=()=>{State.useRecalc=document.getElementById("recalc-stats-cb").checked,State.rows&&UI.fillStats(State.useRecalc?State.stats:State.summaryStats)},onPowerSmoothingChange=()=>{State.powerSmoothing=parseInt(document.getElementById("power-smooth-select").value),State.rows&&UI.drawChart(State.rows)},onChartModeChange=()=>{State.chartMode=document.getElementById("chart-mode-select").value,State.rows&&UI.drawChart(State.rows)},toggleDesignerMode=()=>Designer.toggle(),onTitleAutoSizeChange=()=>{State.titleAutoSize=document.getElementById("title-auto-size-cb").checked;const t=document.getElementById("title-overlay");if(t.classList.toggle("title-auto-size",State.titleAutoSize),State.titleAutoSize)t.style.width="",t.style.height="";else if(State.layout?.["title-overlay"]){const e=document.getElementById("report-card"),a=State.layout["title-overlay"];t.style.width=a.wFrac*e.clientWidth+"px",t.style.height=a.hFrac*e.clientHeight+"px"}State.layout?.settings&&(State.layout.settings.titleAutoSize=State.titleAutoSize)},onCameraChange=()=>Designer.onCameraChange(),saveLayout=()=>Designer.save(),resetUI=()=>UI.reset(),fetchWeather=()=>WeatherService.fetch(),onWeatherUnitChange=()=>{State.weatherUnits.temp=document.getElementById("temp-unit-select").value,State.weatherUnits.wind=document.getElementById("wind-unit-select").value,State.layout&&(State.layout.units={...State.weatherUnits}),State.weather&&UI.fillWeather(State.weather)},startExport=t=>Exporter.start(t);function _stravaShowConnect(){document.getElementById("strava-connect-panel").style.display="flex",document.getElementById("strava-connect-panel").style.flexDirection="column",document.getElementById("strava-connect-panel").style.gap="8px",document.getElementById("strava-connect-panel").style.width="100%",document.getElementById("strava-connected-panel").style.display="none",StravaService.hasCredentials()||(document.getElementById("strava-creds-area").style.display="flex",document.getElementById("strava-creds-area").style.flexDirection="column",document.getElementById("strava-creds-area").style.gap="7px",document.getElementById("strava-creds-toggle").style.display="none")}function _stravaShowRides(){document.getElementById("strava-connect-panel").style.display="none",document.getElementById("strava-connected-panel").style.display="flex",document.getElementById("strava-connected-panel").style.flexDirection="column",document.getElementById("strava-connected-panel").style.gap="10px",document.getElementById("strava-connected-panel").style.width="100%",_stravaLoadRides()}async function _stravaLoadRides(){const t=document.getElementById("strava-rides-grid"),e=document.getElementById("strava-rides-status");t.innerHTML="",e.textContent="Loading recent rides…";try{const a=await StravaService.fetchRecentRides(3);if(e.textContent="",!a.length)return void(e.textContent="No recent cycling activities found.");a.forEach(e=>{const a=(e.distance/1e3).toFixed(1),o=Math.floor(e.moving_time/3600),n=Math.floor(e.moving_time%3600/60),l=o>0?`${o}h ${String(n).padStart(2,"0")}m`:`${n}m`,r=Math.round(e.total_elevation_gain),i=new Date(e.start_date_local).toLocaleDateString("en-GB",{day:"numeric",month:"short"}),s=document.createElement("button");s.className="strava-ride-card",s.innerHTML=`\n        <div class="src-dot"></div>\n        <div class="src-info">\n          <div class="src-name">${e.name}</div>\n          <div class="src-meta">${i} · ${e.type}</div>\n        </div>\n        <div class="src-stats">\n          <div class="src-stat">\n            <div class="src-stat-val">${a}</div>\n            <div class="src-stat-lbl">km</div>\n          </div>\n          <div class="src-stat">\n            <div class="src-stat-val">${l}</div>\n            <div class="src-stat-lbl">time</div>\n          </div>\n          <div class="src-stat">\n            <div class="src-stat-val">${r}</div>\n            <div class="src-stat-lbl">m ↑</div>\n          </div>\n        </div>`,s.addEventListener("click",async()=>{s.classList.add("loading"),s.querySelector(".src-name").textContent="Loading…",await App.loadStravaActivity(e)}),t.appendChild(s)})}catch(t){e.textContent="Error: "+t.message}}function onToggleCredsArea(){const t=document.getElementById("strava-creds-area"),e=document.getElementById("strava-creds-toggle"),a="none"!==t.style.display;t.style.display=a?"none":"flex",t.style.flexDirection="column",t.style.gap="7px",e.textContent=a?"change credentials":"hide"}function onStravaConnect(){StravaService.authorize()}function onStravaDisconnect(){StravaService.disconnect(),document.getElementById("strava-rides-grid").innerHTML="",_stravaShowConnect()}!function(){const t=parseInt(localStorage.getItem("rr_ftp"));!isNaN(t)&&t>=50&&t<=600&&(State.ftp=t);const e=document.getElementById("ftp-input");e&&(e.value=State.ftp)}(),document.getElementById("ftp-input").addEventListener("input",t=>{const e=parseInt(t.target.value);!isNaN(e)&&e>=50&&e<=600&&(State.ftp=e,localStorage.setItem("rr_ftp",e),State.rows&&UI.drawChart(State.rows))}),document.getElementById("title-input").addEventListener("input",t=>{if(State.customTitle=t.target.value,State.rows){const t=State.useRecalc?State.stats:State.summaryStats;document.getElementById("ride-title").textContent=State.customTitle||t.title}}),async function(){const t=new URLSearchParams(location.hash.slice(1)).get("strava_error");t?(history.replaceState(null,"",location.pathname+location.search),UI.setStatus("Strava auth denied: "+t),_stravaShowConnect()):StravaService.readFragmentTokens()?(UI.setStatus(""),_stravaShowRides()):StravaService.isConnected()?_stravaShowRides():_stravaShowConnect()}(),async function(){const t=new URLSearchParams(location.search),e=t.get("fit");if(!e)return;const a=t.get("title");if(a){State.customTitle=a;const t=document.getElementById("title-input");t&&(t.value=a)}window.__rr_headless=!0,console.log("[Headless] Starting…");try{console.log("[Headless] Fetching FIT:",e);const o=await fetch(e);if(!o.ok)throw new Error(`FIT fetch failed: ${o.status}`);const n=await o.arrayBuffer(),l=e.split("/").pop().split("?")[0]||"ride.fit";await App.handleFile(new File([n],l));const r=t.get("layout");if(r){console.log("[Headless] Applying layout:",r);const t=await fetch(r);if(!t.ok)throw new Error(`Layout fetch failed: ${t.status}`);Designer.applyLayout(await t.json())}if(a){State.titleAutoSize=!0;const t=document.getElementById("title-overlay");t.classList.add("title-auto-size"),t.style.width="",t.style.height=""}console.log("[Headless] Fetching weather…"),await WeatherService.fetch(),await new Promise(t=>setTimeout(t,2e3)),console.log("[Headless] Exporting…"),await Exporter.start(!0),console.log("[Headless] Done!")}catch(t){console.error("[Headless] Error:",t),window.__rr_error=t.message,window.__rr_done=!0}}();</script>
+<!-- UI Callbacks (must be after modules) -->
+
+</body>
+</html>
