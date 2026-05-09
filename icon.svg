@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="62%">
+      <stop offset="0%" stop-color="#1e2245"/>
+      <stop offset="100%" stop-color="#07070d"/>
+    </radialGradient>
+    <filter id="hubGlow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="barGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+
+  <!-- Wheel: outer rim -->
+  <circle cx="256" cy="205" r="145"
+    fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="14"/>
+  <!-- Wheel: inner rim groove -->
+  <circle cx="256" cy="205" r="131"
+    fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="2"/>
+
+  <!-- 8 spokes (hub r=22, inner rim r=131, center 256,205) -->
+  <!-- spoke endpoints: start = center ± 22 in direction, end = center ± 131 in direction -->
+  <g stroke="rgba(255,255,255,0.6)" stroke-width="5" stroke-linecap="round">
+    <line x1="256" y1="183" x2="256"  y2="74"/>   <!-- 0°   up          -->
+    <line x1="272" y1="189" x2="349"  y2="112"/>  <!-- 45°  upper-right  -->
+    <line x1="278" y1="205" x2="387"  y2="205"/>  <!-- 90°  right        -->
+    <line x1="272" y1="221" x2="349"  y2="298"/>  <!-- 135° lower-right  -->
+    <line x1="256" y1="227" x2="256"  y2="336"/>  <!-- 180° down         -->
+    <line x1="240" y1="221" x2="163"  y2="298"/>  <!-- 225° lower-left   -->
+    <line x1="234" y1="205" x2="125"  y2="205"/>  <!-- 270° left         -->
+    <line x1="240" y1="189" x2="163"  y2="112"/>  <!-- 315° upper-left   -->
+  </g>
+
+  <!-- Hub: orange glow halo -->
+  <circle cx="256" cy="205" r="30" fill="#FC4C02" opacity="0.3" filter="url(#hubGlow)"/>
+  <!-- Hub: white disc -->
+  <circle cx="256" cy="205" r="22" fill="rgba(255,255,255,0.95)"/>
+  <!-- Hub: orange centre -->
+  <circle cx="256" cy="205" r="13" fill="#FC4C02"/>
+
+  <!-- Power / elevation bars — 9 bars, base at y=490, growing upward -->
+  <!-- Heights simulate a ride ending in a sprint: 22 38 30 54 42 66 52 76 84 -->
+  <g filter="url(#barGlow)">
+    <rect x="80"  y="468" width="32" height="22" rx="5" fill="#FC4C02" opacity="0.52"/>
+    <rect x="120" y="452" width="32" height="38" rx="5" fill="#FC4C02" opacity="0.63"/>
+    <rect x="160" y="460" width="32" height="30" rx="5" fill="#FC4C02" opacity="0.70"/>
+    <rect x="200" y="436" width="32" height="54" rx="5" fill="#FC4C02" opacity="0.78"/>
+    <rect x="240" y="448" width="32" height="42" rx="5" fill="#FC4C02" opacity="0.72"/>
+    <rect x="280" y="424" width="32" height="66" rx="5" fill="#FC4C02" opacity="0.86"/>
+    <rect x="320" y="438" width="32" height="52" rx="5" fill="#FC4C02" opacity="0.80"/>
+    <rect x="360" y="414" width="32" height="76" rx="5" fill="#FC4C02" opacity="0.94"/>
+    <rect x="400" y="406" width="32" height="84" rx="5" fill="#FC4C02" opacity="1.00"/>
+  </g>
+</svg>
