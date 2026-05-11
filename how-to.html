@@ -32,33 +32,16 @@
       min-height: 100vh;
     }
 
-    /* ── Layout ── */
     .page { max-width: 760px; margin: 0 auto; padding: 0 1.25rem 5rem; }
 
-    /* ── Hero ── */
     .hero {
       display: flex; flex-direction: column; align-items: center;
       padding: 3.5rem 0 2.5rem; text-align: center; gap: 1.25rem;
     }
-    .hero-icon {
-      width: 80px; height: 80px; border-radius: 18px;
-      box-shadow: 0 8px 32px rgba(252,82,0,0.25);
-    }
-    .hero h1 {
-      font-family: var(--head); font-size: 2.4rem; font-weight: 900;
-      letter-spacing: -0.01em; line-height: 1.1;
-    }
+    .hero-icon { width: 80px; height: 80px; border-radius: 18px; box-shadow: 0 8px 32px rgba(252,82,0,0.25); }
+    .hero h1 { font-family: var(--head); font-size: 2.4rem; font-weight: 900; letter-spacing: -0.01em; line-height: 1.1; }
     .hero h1 span { color: var(--orange); }
     .hero p { font-size: 1.05rem; color: var(--muted); max-width: 480px; }
-
-    .hero-cta {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      background: var(--orange); color: #fff;
-      padding: 0.7rem 1.5rem; border-radius: 8px;
-      font-family: var(--head); font-size: 1rem; font-weight: 700;
-      text-decoration: none; transition: background .15s;
-    }
-    .hero-cta:hover { background: #e04800; }
 
     .chrome-note {
       display: inline-flex; align-items: center; gap: 0.4rem;
@@ -68,24 +51,15 @@
     }
     .chrome-note strong { color: var(--text); }
 
-    /* ── Section headings ── */
     .section-label {
       font-family: var(--head); font-size: 0.72rem; font-weight: 700;
       letter-spacing: 0.1em; text-transform: uppercase;
       color: var(--orange); margin-bottom: 0.75rem; margin-top: 3rem;
     }
-    .section-title {
-      font-family: var(--head); font-size: 1.6rem; font-weight: 700;
-      margin-bottom: 1.25rem;
-    }
+    .section-title { font-family: var(--head); font-size: 1.6rem; font-weight: 700; margin-bottom: 1.25rem; }
 
-    /* ── Divider ── */
-    .divider {
-      border: none; border-top: 1px solid var(--border);
-      margin: 2.5rem 0;
-    }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
 
-    /* ── Option cards (two equal paths) ── */
     .options { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
     @media (max-width: 560px) { .options { grid-template-columns: 1fr; } }
 
@@ -95,11 +69,7 @@
       display: flex; flex-direction: column; gap: 0.75rem;
     }
     .option-card.highlight { border-color: rgba(252,82,0,0.35); background: var(--orange-soft); }
-    .option-icon {
-      width: 40px; height: 40px; border-radius: 10px;
-      background: rgba(255,255,255,0.06);
-      display: flex; align-items: center; justify-content: center;
-    }
+    .option-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; }
     .option-card h3 { font-family: var(--head); font-size: 1.1rem; font-weight: 700; }
     .option-card p { font-size: 0.88rem; color: var(--muted); line-height: 1.55; }
     .option-badge {
@@ -107,11 +77,9 @@
       letter-spacing: 0.06em; text-transform: uppercase;
       background: var(--orange-soft); color: var(--orange);
       border: 1px solid rgba(252,82,0,0.3);
-      border-radius: 4px; padding: 0.2em 0.5em;
-      align-self: flex-start;
+      border-radius: 4px; padding: 0.2em 0.5em; align-self: flex-start;
     }
 
-    /* ── Step list ── */
     .steps { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
     .step {
       display: flex; align-items: flex-start; gap: 1rem;
@@ -122,8 +90,7 @@
       flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
       background: var(--orange); color: #fff;
       font-family: var(--head); font-size: 0.85rem; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: 0.1rem;
+      display: flex; align-items: center; justify-content: center; margin-top: 0.1rem;
     }
     .step-body h4 { font-family: var(--head); font-size: 1rem; font-weight: 700; margin-bottom: 0.2rem; }
     .step-body p  { font-size: 0.87rem; color: var(--muted); line-height: 1.5; }
@@ -133,7 +100,6 @@
       font-family: 'Courier New', monospace; color: var(--text);
     }
 
-    /* ── Feature grid ── */
     .features { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; margin-top: 1rem; }
     @media (max-width: 480px) { .features { grid-template-columns: 1fr; } }
     .feature {
@@ -141,15 +107,10 @@
       border-radius: 12px; padding: 1.1rem 1.15rem;
       display: flex; gap: 0.9rem; align-items: flex-start;
     }
-    .feature-icon {
-      flex-shrink: 0; width: 36px; height: 36px; border-radius: 9px;
-      background: rgba(255,255,255,0.05);
-      display: flex; align-items: center; justify-content: center;
-    }
+    .feature-icon { flex-shrink: 0; width: 36px; height: 36px; border-radius: 9px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; }
     .feature h4 { font-family: var(--head); font-size: 0.97rem; font-weight: 700; margin-bottom: 0.2rem; }
     .feature p  { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
 
-    /* ── Export call-out ── */
     .export-box {
       background: var(--orange-soft); border: 1px solid rgba(252,82,0,0.35);
       border-radius: 14px; padding: 1.5rem 1.75rem;
@@ -159,19 +120,14 @@
     .export-box h3 { font-family: var(--head); font-size: 1.15rem; font-weight: 700; margin-bottom: 0.3rem; }
     .export-box p  { font-size: 0.87rem; color: var(--muted); line-height: 1.5; }
 
-    /* ── Tips ── */
     .tips { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1rem; }
     .tip {
       display: flex; align-items: flex-start; gap: 0.75rem;
       font-size: 0.88rem; color: var(--muted); line-height: 1.5;
     }
-    .tip::before {
-      content: '→'; color: var(--orange); font-weight: 700;
-      flex-shrink: 0; margin-top: 0.05rem;
-    }
+    .tip::before { content: '→'; color: var(--orange); font-weight: 700; flex-shrink: 0; margin-top: 0.05rem; }
     .tip strong { color: var(--text); }
 
-    /* ── Footer ── */
     footer {
       border-top: 1px solid var(--border); margin-top: 3.5rem;
       padding: 1.5rem 0; text-align: center;
@@ -184,13 +140,13 @@
 <body>
 <div class="page">
 
-  <!-- ── Hero ── -->
+  <!-- Hero -->
   <div class="hero">
     <img src="icon.svg" alt="Ride Report" class="hero-icon">
     <div>
       <h1>How to create your<br><span>Ride Report</span></h1>
     </div>
-    <p>Turn any cycling activity into a stunning PNG — map, power chart, and stats — ready to post on Strava or share with your club.</p>
+    <p>Turn any cycling or running activity into a stunning PNG — map, power chart, and stats — ready to post on Strava or share with your club.</p>
     <div class="chrome-note">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Best experience in <strong>Google Chrome</strong>
@@ -199,46 +155,84 @@
 
   <hr class="divider">
 
-  <!-- ── Step 1: Load a ride ── -->
+  <!-- Step 1 -->
   <div class="section-label">Step 1</div>
   <div class="section-title">Load your ride</div>
 
   <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">
-    There are two ways to get your ride into the app — pick whichever suits you.
+    Two ways to get your ride into the app — pick whichever suits you.
   </p>
 
   <div class="options">
-    <!-- Option A -->
     <div class="option-card highlight">
       <div class="option-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#FC5200"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
       </div>
       <div class="option-badge">Via Strava</div>
-      <h3>Connect your Strava</h3>
-      <p>Click <strong>Connect with Strava</strong> on the landing screen, log in, and your three most recent rides appear instantly. Click one to load it.</p>
-      <p style="font-size:0.8rem;color:rgba(255,255,255,0.3);">One-time setup. Your login is remembered.</p>
+      <h3>Connect Strava</h3>
+      <p>Click <strong>Connect with Strava</strong> on the landing screen. Your three most recent rides appear — click any one to load it instantly.</p>
+      <p style="font-size:0.8rem;color:rgba(255,255,255,0.3);">One-time setup. Your login is remembered between sessions.</p>
     </div>
 
-    <!-- Option B -->
     <div class="option-card">
       <div class="option-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round"><path d="M12 2v12M12 2L8 6M12 2l4 4"/><path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2"/></svg>
       </div>
       <div class="option-badge" style="background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.1);">Via File</div>
-      <h3>Drop a file</h3>
-      <p>Drag a <code>.fit</code> file from your Garmin, Wahoo, or Suunto onto the drop zone — or click <strong>Browse File</strong> to pick one.</p>
-      <p style="font-size:0.8rem;color:rgba(255,255,255,0.3);">Also accepts Strava JSON files downloaded from the companion page.</p>
+      <h3>Drop a .fit file</h3>
+      <p>Drag a <code>.fit</code> file from your Garmin, Wahoo, or Suunto onto the drop zone — or click <strong>Browse File</strong>.</p>
     </div>
   </div>
 
   <hr class="divider">
 
-  <!-- ── Step 2: Customise ── -->
+  <!-- Step 1b: Strava photo -->
+  <div class="section-label">Strava users</div>
+  <div class="section-title">Use your ride photo as background</div>
+
+  <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">
+    If you uploaded photos with your activity on Strava, you can use one as the background of your report.
+  </p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Look for the 📷 button on a ride card</h4>
+        <p>Rides that have photos show a <strong>"📷 Use ride photo as background"</strong> button below the stats. Only rides with photos show this button.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Click it to load thumbnails</h4>
+        <p>Your ride photos appear as small thumbnails. Click one to select it — it gets an orange border. Click again to deselect.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Click the ride card to load</h4>
+        <p>Click the ride name/stats area to load the ride. The selected photo is automatically set as the background in <strong>With Photo</strong> mode — the map blends over it.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>Adjust the blend</h4>
+        <p>Use <strong>Map → With Photo</strong> controls to change the photo opacity, map opacity, and blend mode. Toggle <strong>With Photo</strong> off and back on to restore your photo without re-selecting.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Step 2 -->
   <div class="section-label">Step 2</div>
   <div class="section-title">Customise your report</div>
 
   <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">
-    Your report is fully interactive. Pan and zoom the map, then personalise it before exporting.
+    Pan and zoom the map, then personalise everything before exporting.
   </p>
 
   <div class="features">
@@ -249,7 +243,7 @@
       </div>
       <div>
         <h4>Map &amp; theme</h4>
-        <p>Use the <strong>Map</strong> menu to switch between dark, light, maritime, and navy map styles. Pan and zoom freely.</p>
+        <p>Use the <strong>Map</strong> menu to switch between dark, light, maritime, and navy styles. Pan and zoom freely.</p>
       </div>
     </div>
 
@@ -259,7 +253,27 @@
       </div>
       <div>
         <h4>Background photo</h4>
-        <p>Open <strong>Map → My Photo</strong> to replace the map with one of your own photos, or blend a photo behind the map.</p>
+        <p>Enable <strong>Map → With Photo</strong> then choose a photo from your device. Or select one directly from Strava (see above).</p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+      </div>
+      <div>
+        <h4>Route Glow</h4>
+        <p>Open <strong>Designer ▾ → Route Glow</strong> to replace the power-zone route with a neon glow effect. Adjust colour, width, glow size, and intensity. Great for rides without a power meter.</p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      </div>
+      <div>
+        <h4>Route Mask</h4>
+        <p>Enable <strong>Map → Route Mask</strong> to fade the map tiles away from the route, focusing attention on your path. Saved in your layout.</p>
       </div>
     </div>
 
@@ -269,7 +283,7 @@
       </div>
       <div>
         <h4>Custom title</h4>
-        <p>Type a title in the <strong>Custom Title</strong> box on the landing screen before loading your ride. It appears in the title bubble.</p>
+        <p>Type a title in the <strong>Custom Title</strong> box on the landing screen before loading your ride.</p>
       </div>
     </div>
 
@@ -279,7 +293,7 @@
       </div>
       <div>
         <h4>Designer mode</h4>
-        <p>Enable <strong>Designer → Designer Mode</strong> to drag the stat panels, title, and chart anywhere on the card.</p>
+        <p>Enable <strong>Designer → Designer Mode</strong> to drag the stat panels, title, and chart anywhere on the card. Resize and adjust opacity per element.</p>
       </div>
     </div>
 
@@ -289,7 +303,7 @@
       </div>
       <div>
         <h4>Power chart &amp; FTP</h4>
-        <p>Set your <strong>FTP</strong> (threshold watts) on the landing screen. The chart colours each second by power zone automatically.</p>
+        <p>Set your <strong>FTP</strong> on the landing screen. The chart colours each second by power zone. Use <strong>Chart ▾</strong> to change smoothing and chart mode.</p>
       </div>
     </div>
 
@@ -299,7 +313,7 @@
       </div>
       <div>
         <h4>Save your layout</h4>
-        <p>Once you're happy, go to <strong>Designer → Save Layout</strong>. Load it next time to restore your exact panel positions and settings.</p>
+        <p>Go to <strong>Designer → Save Layout</strong> to download a <code>.json</code> file. Load it next time to restore your exact panel positions, route glow, route mask, and all settings.</p>
       </div>
     </div>
 
@@ -307,7 +321,7 @@
 
   <hr class="divider">
 
-  <!-- ── Step 3: Export ── -->
+  <!-- Step 3 -->
   <div class="section-label">Step 3</div>
   <div class="section-title">Export your PNG</div>
 
@@ -319,7 +333,7 @@
     </svg>
     <div>
       <h3>Click Export Screen</h3>
-      <p>The toolbar at the top of your report has an <strong>⬇ Export Screen</strong> button. Click it and your browser will download a PNG at the full resolution of your screen — ready to post on Strava, Instagram, or your club WhatsApp.</p>
+      <p>The toolbar has an <strong>⬇ Export Screen</strong> button. Click it and your browser downloads a PNG at full screen resolution — ready to post on Strava, Instagram, or your club WhatsApp.</p>
     </div>
   </div>
 
@@ -328,43 +342,44 @@
       <div class="step-num">1</div>
       <div class="step-body">
         <h4>Pan &amp; zoom the map to your preferred view</h4>
-        <p>The exported image captures exactly what you see. Tilt the map with the pitch slider in the Designer menu for a dramatic 3D look.</p>
+        <p>The exported image captures exactly what you see. Tilt the map with the Pitch slider in Designer for a dramatic 3D look.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-body">
         <h4>Click ⬇ Export Screen</h4>
-        <p>A short processing spinner appears, then your browser automatically downloads <code>ridename_v6.28.png</code>.</p>
+        <p>A short spinner appears, then your browser downloads the PNG automatically.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-num">3</div>
       <div class="step-body">
         <h4>Share it</h4>
-        <p>Post directly to Strava as an activity photo, drop it in your club WhatsApp, or share on Instagram. The 16:9 format is perfect for all platforms.</p>
+        <p>Post directly to Strava as an activity photo, drop it in your club WhatsApp, or share on Instagram. The 16:9 format works perfectly on all platforms.</p>
       </div>
     </div>
   </div>
 
   <hr class="divider">
 
-  <!-- ── Tips ── -->
+  <!-- Tips -->
   <div class="section-label">Tips</div>
   <div class="section-title">Good to know</div>
 
   <div class="tips">
-    <div class="tip"><span><strong>No data is stored.</strong> Everything happens in your browser. Close the tab and it's gone — nothing is saved to any server.</span></div>
-    <div class="tip"><span><strong>Chrome gives the best results.</strong> Safari on Mac has a known rendering limitation. Chrome on any platform works perfectly.</span></div>
-    <div class="tip"><span><strong>No power meter?</strong> The power chart and watt stats simply stay blank. Distance, time, elevation, and HR still show normally.</span></div>
-    <div class="tip"><span><strong>FTP matters for colours.</strong> Set your actual FTP on the landing screen so the chart zones (recovery → anaerobic) are calibrated to you, not defaults.</span></div>
-    <div class="tip"><span><strong>Weather button.</strong> Click ☁ Weather in the toolbar to automatically fetch the conditions for the time and location of your ride.</span></div>
-    <div class="tip"><span><strong>Layouts are reusable.</strong> Save a layout once, load it every time — your panels, map position, and theme are all restored instantly.</span></div>
+    <div class="tip"><span><strong>No data is stored.</strong> Everything happens in your browser. Nothing is saved to any server.</span></div>
+    <div class="tip"><span><strong>Chrome gives the best results.</strong> Safari on Mac has a known rendering limitation with Export Screen. Chrome on any platform works perfectly.</span></div>
+    <div class="tip"><span><strong>No power meter?</strong> Enable Route Glow (Designer ▾) for a clean neon route instead of blank power zones. Distance, time, elevation, and HR still show normally.</span></div>
+    <div class="tip"><span><strong>Privacy zone.</strong> The first and last 300 metres of your route are automatically hidden — your home address never appears on the map or in the export.</span></div>
+    <div class="tip"><span><strong>FTP matters for colours.</strong> Set your actual FTP on the landing screen so the chart zones are calibrated to you.</span></div>
+    <div class="tip"><span><strong>Weather button.</strong> Click ☁ Weather in the toolbar to automatically fetch conditions for the time and location of your ride.</span></div>
+    <div class="tip"><span><strong>Layouts are reusable.</strong> Save a layout once — it restores your panels, map position, route glow, route mask, and theme every time.</span></div>
+    <div class="tip"><span><strong>Strava photo tip.</strong> Select a photo thumbnail before clicking the ride card. The photo loads automatically with the ride — no extra steps needed.</span></div>
   </div>
 
   <hr class="divider" style="margin-top:2.5rem;">
 
-  <!-- ── Footer ── -->
   <footer>
     <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:0.5rem;">
       <img src="icon.svg" alt="" style="width:22px;height:22px;border-radius:5px;opacity:0.6;">
