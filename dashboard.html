@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SAAMP</title>
+<style>
+:root {
+  --bg:      #0D0D0D;
+  --surf:    #1A1A1A;
+  --surf2:   #242424;
+  --border:  #2C2C2C;
+  --text:    #FFFFFF;
+  --muted:   #777777;
+  --red:     #FF3B5C;
+  --amber:   #FFB020;
+  --green:   #00E676;
+  --blue:    #4FC3F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px; display: flex; flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Top bar ── */
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--border); background: var(--surf);
+  flex-shrink: 0;
+}
+.topbar h1 { font-size: 16px; font-weight: 700; letter-spacing: .3px; }
+.topbar h1 span { color: var(--red); }
+.spacer { flex: 1; }
+.meta { color: var(--muted); font-size: 11px; }
+.btn { background: var(--border); border: none; color: var(--text); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.btn:active { opacity: .7; }
+
+/* ── Summary cards ── */
+.summary {
+  display: flex; gap: 8px; padding: 12px 16px;
+  border-bottom: 1px solid var(--border); overflow-x: auto;
+  flex-shrink: 0; scrollbar-width: none;
+}
+.summary::-webkit-scrollbar { display: none; }
+.stat { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; text-align: center; min-width: 72px; flex-shrink: 0; }
+.stat .val { font-size: 20px; font-weight: 700; }
+.stat .lbl { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; margin-top: 1px; }
+.stat.red  .val { color: var(--red); }
+.stat.amber .val { color: var(--amber); }
+.stat.green .val { color: var(--green); }
+
+/* ── Filters ── */
+.filters {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  border-bottom: 1px solid var(--border); overflow-x: auto;
+  flex-shrink: 0; scrollbar-width: none;
+}
+.filters::-webkit-scrollbar { display: none; }
+.pill {
+  background: var(--border); border: 1.5px solid transparent; color: var(--muted);
+  padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 12px;
+  white-space: nowrap; flex-shrink: 0; font-weight: 500;
+}
+.pill.active { background: rgba(255,59,92,.15); border-color: var(--red); color: var(--red); }
+.sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+select {
+  background: var(--border); border: 1px solid var(--border); color: var(--text);
+  padding: 5px 10px; border-radius: 8px; font-size: 12px; flex-shrink: 0;
+  -webkit-appearance: none; padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23777'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+
+/* ── Tab bar ── */
+.tabbar {
+  display: flex; border-bottom: 1px solid var(--border);
+  background: var(--surf); flex-shrink: 0;
+}
+.tab {
+  flex: 1; padding: 12px 8px; text-align: center; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--muted); border: none;
+  background: none; position: relative; letter-spacing: .2px;
+}
+.tab.active { color: var(--text); }
+.tab.active::after {
+  content: ''; position: absolute; bottom: 0; left: 16px; right: 16px;
+  height: 2px; background: var(--red); border-radius: 2px 2px 0 0;
+}
+.tab-badge {
+  display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px;
+  font-weight: 700; margin-left: 5px; vertical-align: middle;
+}
+.tab-badge.red   { background: var(--red);   color: #fff; }
+.tab-badge.amber { background: var(--amber);  color: #000; }
+
+/* ── Panel ── */
+.panel { display: none; flex: 1; overflow-y: auto; }
+.panel.active { display: block; }
+
+/* ── Rows ── */
+.row {
+  padding: 13px 16px; border-bottom: 1px solid var(--border);
+  cursor: pointer; -webkit-user-select: none;
+}
+.row:active { background: var(--surf2); }
+.row.expanded { background: var(--surf); }
+.row-top { display: flex; align-items: flex-start; gap: 8px; }
+.row-sig { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; flex: 1; word-break: break-all; line-height: 1.4; }
+.row-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.badge {
+  display: inline-block; padding: 2px 7px; border-radius: 5px;
+  font-size: 11px; font-weight: 600;
+}
+.badge.error    { background: rgba(255,59,92,.2);  color: var(--red); }
+.badge.warning  { background: rgba(255,176,32,.2); color: var(--amber); }
+.badge.pending  { background: rgba(255,176,32,.15);color: var(--amber); }
+.badge.resolved { background: rgba(0,230,118,.15); color: var(--green); }
+.svc-badge { background: var(--border); color: var(--muted); padding: 2px 7px; border-radius: 5px; font-size: 11px; }
+.time-lbl { color: var(--muted); font-size: 11px; }
+.cat-lbl  { font-family: monospace; font-size: 12px; color: var(--blue); }
+.count-chip { background: var(--border); color: var(--muted); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+
+/* ── Expand ── */
+.expand-body {
+  background: #111; padding: 12px 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.expand-body pre {
+  font-family: 'SF Mono', Menlo, monospace; font-size: 11px; color: #ccc;
+  white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow-y: auto;
+  line-height: 1.5;
+}
+.expand-body .stack { color: var(--muted); font-size: 10px; margin-top: 10px; }
+.expand-body .session-lbl { color: var(--muted); font-size: 10px; margin-bottom: 6px; font-family: monospace; }
+.resolve-btn {
+  margin-top: 10px; background: rgba(0,230,118,.15);
+  border: 1px solid rgba(0,230,118,.3); color: var(--green);
+  padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+  width: 100%;
+}
+.resolve-btn:active { opacity: .7; }
+.resolve-btn:disabled { opacity: .4; }
+
+/* ── Empty ── */
+.empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+.empty .icon { font-size: 36px; margin-bottom: 8px; }
+
+/* ── Spinner ── */
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid var(--border); border-top-color: var(--red);
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Desktop 2-col ── */
+@media (min-width: 768px) {
+  .tabbar { display: none; }
+  .desktop-panels { display: grid !important; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); flex: 1; overflow: hidden; }
+  .desktop-panel { background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
+  .desktop-panel-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surf); flex-shrink: 0; }
+  .desktop-panel-header h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+  .desktop-panel-body { overflow-y: auto; flex: 1; }
+  .panel { display: block !important; flex: 1; overflow-y: auto; }
+  .desktop-panels .panel { display: block !important; overflow-y: auto; }
+  .mobile-panels { display: none !important; }
+}
+.desktop-panels { display: none; }
+.mobile-panels  { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <h1>SAAMP <span>●</span></h1>
+  <div class="spacer"></div>
+  <span class="meta" id="last-refreshed"></span>
+  <button class="btn" onclick="refresh()" id="refresh-btn">↺</button>
+  <button class="btn" onclick="showSetup()" style="font-size:15px;padding:7px 10px">⚙︎</button>
+</div>
+
+<!-- Summary -->
+<div class="summary">
+  <div class="stat red">  <div class="val" id="s-events">—</div>   <div class="lbl">Events</div></div>
+  <div class="stat amber"><div class="val" id="s-warns">—</div>    <div class="lbl">Warnings</div></div>
+  <div class="stat red">  <div class="val" id="s-errs">—</div>     <div class="lbl">Errors</div></div>
+  <div class="stat">      <div class="val" id="s-sigs">—</div>     <div class="lbl">Sigs</div></div>
+  <div class="stat green"><div class="val" id="s-svcs">—</div>     <div class="lbl">Services</div></div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+  <div id="svc-pills"></div>
+  <div class="sep"></div>
+  <select id="range-sel" onchange="refresh()">
+    <option value="1">1h</option>
+    <option value="24" selected>24h</option>
+    <option value="168">7d</option>
+    <option value="720">30d</option>
+    <option value="0">All</option>
+  </select>
+  <select id="status-sel" onchange="refresh()">
+    <option value="pending">Pending</option>
+    <option value="all">All</option>
+  </select>
+</div>
+
+<!-- Mobile tabs -->
+<div class="tabbar">
+  <button class="tab active" id="tab-ev"   onclick="showTab('ev')">
+    Events <span class="tab-badge red" id="tab-ev-badge">0</span>
+  </button>
+  <button class="tab"        id="tab-diag" onclick="showTab('diag')">
+    Diagnostics <span class="tab-badge amber" id="tab-diag-badge">0</span>
+  </button>
+</div>
+
+<!-- Mobile panels -->
+<div class="mobile-panels">
+  <div class="panel active" id="panel-ev"></div>
+  <div class="panel"        id="panel-diag"></div>
+</div>
+
+<!-- Desktop 2-col -->
+<div class="desktop-panels">
+  <div class="desktop-panel">
+    <div class="desktop-panel-header">
+      <h2>Events</h2>
+      <span class="tab-badge red" id="dsk-ev-badge">0</span>
+      <div class="spacer"></div>
+      <div id="ev-spin"></div>
+    </div>
+    <div class="desktop-panel-body" id="dsk-panel-ev"></div>
+  </div>
+  <div class="desktop-panel">
+    <div class="desktop-panel-header">
+      <h2>Diagnostics · Warnings &amp; Errors</h2>
+      <span class="tab-badge amber" id="dsk-diag-badge">0</span>
+      <div class="spacer"></div>
+      <div id="diag-spin"></div>
+    </div>
+    <div class="desktop-panel-body" id="dsk-panel-diag"></div>
+  </div>
+</div>
+
+<script>
+// ── Credentials (stored in localStorage, never in source) ──────────────────
+let SUPABASE_URL = localStorage.getItem('saamp_url') || '';
+let SUPABASE_KEY = localStorage.getItem('saamp_key') || '';
+let H = {};
+function buildHeaders() {
+  H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+}
+buildHeaders();
+
+function showSetup(err) {
+  const overlay = document.getElementById('setup-overlay');
+  overlay.style.display = 'flex';
+  if (err) document.getElementById('setup-err').textContent = err;
+  document.getElementById('setup-url').value = SUPABASE_URL;
+  document.getElementById('setup-key').value = SUPABASE_KEY;
+}
+function hideSetup() { document.getElementById('setup-overlay').style.display = 'none'; }
+
+async function saveSetup() {
+  const url = document.getElementById('setup-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('setup-key').value.trim();
+  if (!url || !key) { document.getElementById('setup-err').textContent = 'Both fields required.'; return; }
+  SUPABASE_URL = url; SUPABASE_KEY = key;
+  localStorage.setItem('saamp_url', url);
+  localStorage.setItem('saamp_key', key);
+  buildHeaders();
+  hideSetup();
+  refresh();
+}
+
+let activeSvc = 'all';
+let autoTimer  = null;
+let evData     = [];
+let diagData   = [];
+
+// ── Fetch ──────────────────────────────────────────────────────────────────
+async function q(path) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: H });
+  if (r.status === 401) { showSetup('401 — check your key.'); throw new Error('401'); }
+  return r.json();
+}
+async function patch(table, id, body) {
+  await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body)
+  });
+}
+
+function timeFilter(col = 'created_at') {
+  const h = parseInt(document.getElementById('range-sel').value);
+  if (!h) return '';
+  return `&${col}=gte.${new Date(Date.now() - h * 3600000).toISOString()}`;
+}
+function svcFilter() { return activeSvc === 'all' ? '' : `&service_name=eq.${activeSvc}`; }
+
+// ── Services ───────────────────────────────────────────────────────────────
+async function loadServices() {
+  const rows = await q('services?select=service_name&order=created_at.asc');
+  const svcs = rows.map(r => r.service_name);
+  document.getElementById('s-svcs').textContent = svcs.length;
+  const all = ['all', ...svcs];
+  document.getElementById('svc-pills').innerHTML = all.map(s =>
+    `<span class="pill ${s === activeSvc ? 'active' : ''}" onclick="selectSvc('${s}')">${s === 'all' ? 'All' : shortSvc(s)}</span>`
+  ).join('');
+}
+
+function selectSvc(s) {
+  activeSvc = s;
+  document.querySelectorAll('.pill').forEach(p => p.classList.toggle('active', p.textContent.trim() === (s === 'all' ? 'All' : shortSvc(s))));
+  refresh();
+}
+
+// ── Events ─────────────────────────────────────────────────────────────────
+async function loadEvents() {
+  setSpinner('ev-spin', true);
+  const statusQ = document.getElementById('status-sel').value === 'pending' ? '&status=eq.pending' : '';
+  evData = await q(`events?order=received_at.desc&limit=200${timeFilter('received_at')}${svcFilter()}${statusQ}&select=id,service_name,error_signature,status,received_at,context_payload,stack_trace`);
+  setSpinner('ev-spin', false);
+}
+
+function renderEvents(containerId, badgeId) {
+  const el = document.getElementById(containerId);
+  document.getElementById(badgeId).textContent = evData.length;
+  document.getElementById('s-events').textContent = evData.length;
+  const sigs = new Set(evData.map(r => r.error_signature)).size;
+  document.getElementById('s-sigs').textContent = sigs;
+  document.getElementById('tab-ev-badge').textContent = evData.length;
+  document.getElementById('dsk-ev-badge').textContent = evData.length;
+
+  if (!evData.length) { el.innerHTML = `<div class="empty"><div class="icon">✅</div>No events in this range</div>`; return; }
+
+  const sigCounts = {};
+  evData.forEach(r => { sigCounts[r.error_signature] = (sigCounts[r.error_signature] || 0) + 1; });
+
+  el.innerHTML = evData.map((r, i) => {
+    const count = sigCounts[r.error_signature];
+    const statusBadge = r.status === 'resolved'
+      ? `<span class="badge resolved">resolved</span>`
+      : `<span class="badge pending">pending</span>`;
+    return `
+      <div class="row" id="ev-row-${containerId}-${i}" onclick="toggleRow('ev',${i},'${containerId}')">
+        <div class="row-top">
+          <div class="row-sig">${esc(r.error_signature)}${count > 1 ? ` <span class="count-chip">×${count}</span>` : ''}</div>
+        </div>
+        <div class="row-meta">
+          ${statusBadge}
+          <span class="svc-badge">${shortSvc(r.service_name)}</span>
+          <span class="time-lbl">${relTime(r.received_at)}</span>
+        </div>
+      </div>
+      <div id="ev-exp-${containerId}-${i}" style="display:none">
+        <div class="expand-body">
+          <pre>${esc(JSON.stringify(r.context_payload, null, 2))}</pre>
+          ${r.stack_trace ? `<pre class="stack">${esc(r.stack_trace)}</pre>` : ''}
+          <div style="color:var(--muted);font-size:10px;margin-top:8px">${new Date(r.received_at).toLocaleString()}</div>
+          ${r.status !== 'resolved' ? `<button class="resolve-btn" onclick="resolveEvent('${r.id}',this,event)">✓ Mark Resolved</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Diagnostics ────────────────────────────────────────────────────────────
+async function loadDiagnostics() {
+  setSpinner('diag-spin', true);
+  diagData = await q(`diagnostics?level=in.(warning,error)&order=created_at.desc&limit=300${timeFilter()}${svcFilter()}&select=id,service_name,session_id,level,category,message,context,created_at`);
+  setSpinner('diag-spin', false);
+}
+
+function renderDiag(containerId, badgeId) {
+  const el = document.getElementById(containerId);
+  const warns = diagData.filter(r => r.level === 'warning').length;
+  const errs  = diagData.filter(r => r.level === 'error').length;
+  document.getElementById(badgeId).textContent = diagData.length;
+  document.getElementById('s-warns').textContent = warns;
+  document.getElementById('s-errs').textContent  = errs;
+  document.getElementById('tab-diag-badge').textContent = diagData.length;
+  document.getElementById('dsk-diag-badge').textContent = diagData.length;
+
+  if (!diagData.length) { el.innerHTML = `<div class="empty"><div class="icon">✅</div>No warnings or errors in this range</div>`; return; }
+
+  el.innerHTML = diagData.map((r, i) => `
+    <div class="row" id="diag-row-${containerId}-${i}" onclick="toggleRow('diag',${i},'${containerId}')">
+      <div class="row-top">
+        <span class="badge ${r.level}">${r.level}</span>
+        <span class="cat-lbl">${esc(r.category)}</span>
+        <span style="color:var(--muted)">·</span>
+        <span style="font-size:13px">${esc(r.message)}</span>
+      </div>
+      <div class="row-meta">
+        <span class="svc-badge">${shortSvc(r.service_name)}</span>
+        <span class="time-lbl">${relTime(r.created_at)}</span>
+      </div>
+    </div>
+    <div id="diag-exp-${containerId}-${i}" style="display:none">
+      <div class="expand-body">
+        <div class="session-lbl">${r.session_id}</div>
+        <pre>${esc(JSON.stringify(r.context, null, 2))}</pre>
+        <div style="color:var(--muted);font-size:10px;margin-top:8px">${new Date(r.created_at).toLocaleString()}</div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+// ── Toggle row ─────────────────────────────────────────────────────────────
+function toggleRow(type, i, containerId) {
+  const exp = document.getElementById(`${type}-exp-${containerId}-${i}`);
+  const row = document.getElementById(`${type}-row-${containerId}-${i}`);
+  const open = exp.style.display !== 'none';
+  exp.style.display = open ? 'none' : 'block';
+  row.classList.toggle('expanded', !open);
+}
+
+async function resolveEvent(id, btn, e) {
+  e.stopPropagation();
+  btn.disabled = true; btn.textContent = 'Saving…';
+  await patch('events', id, { status: 'resolved', processed_at: new Date().toISOString() });
+  btn.textContent = '✓ Resolved';
+  setTimeout(refresh, 600);
+}
+
+// ── Tabs (mobile) ──────────────────────────────────────────────────────────
+function showTab(name) {
+  ['ev','diag'].forEach(t => {
+    document.getElementById(`panel-${t}`).classList.toggle('active', t === name);
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
+  });
+}
+
+// ── Render both targets ────────────────────────────────────────────────────
+function renderAll() {
+  renderEvents('panel-ev',    'tab-ev-badge');
+  renderEvents('dsk-panel-ev','dsk-ev-badge');
+  renderDiag('panel-diag',    'tab-diag-badge');
+  renderDiag('dsk-panel-diag','dsk-diag-badge');
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function relTime(iso) {
+  const m = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
+}
+function shortSvc(s) { return (s||'?').replace('-ios','').replace('-js',''); }
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function setSpinner(id, on) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = on ? '<div class="spinner"></div>' : '';
+}
+
+// ── Refresh ────────────────────────────────────────────────────────────────
+async function refresh() {
+  const btn = document.getElementById('refresh-btn');
+  btn.textContent = '…'; btn.disabled = true;
+  await Promise.all([loadServices(), loadEvents(), loadDiagnostics()]);
+  renderAll();
+  btn.textContent = '↺'; btn.disabled = false;
+  document.getElementById('last-refreshed').textContent = new Date().toLocaleTimeString();
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(refresh, 30000);
+}
+
+if (SUPABASE_URL && SUPABASE_KEY) refresh(); else showSetup();
+</script>
+
+<!-- Setup overlay -->
+<div id="setup-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#1A1A1A;border:1px solid #2C2C2C;border-radius:16px;padding:28px 24px;width:100%;max-width:420px">
+    <div style="font-size:17px;font-weight:700;margin-bottom:4px">SAAMP Setup</div>
+    <div style="color:#777;font-size:13px;margin-bottom:20px">Credentials saved to this device only — never sent anywhere except Supabase.</div>
+    <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">SUPABASE URL</label>
+    <input id="setup-url" type="url" placeholder="https://xxx.supabase.co"
+      style="width:100%;background:#0D0D0D;border:1px solid #2C2C2C;color:#fff;padding:10px 12px;border-radius:8px;font-size:14px;margin-bottom:14px;outline:none">
+    <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">SERVICE ROLE KEY</label>
+    <input id="setup-key" type="password" placeholder="eyJ…"
+      style="width:100%;background:#0D0D0D;border:1px solid #2C2C2C;color:#fff;padding:10px 12px;border-radius:8px;font-size:14px;margin-bottom:6px;outline:none">
+    <div id="setup-err" style="color:#FF3B5C;font-size:12px;min-height:18px;margin-bottom:14px"></div>
+    <button onclick="saveSetup()"
+      style="width:100%;background:#FF3B5C;border:none;color:#fff;padding:13px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">
+      Connect
+    </button>
+    <button onclick="document.getElementById('setup-key').type = document.getElementById('setup-key').type === 'password' ? 'text' : 'password'"
+      style="width:100%;background:none;border:none;color:#777;padding:10px;font-size:12px;cursor:pointer;margin-top:4px">
+      Show / hide key
+    </button>
+  </div>
+</div>
+
+</body>
+</html>
